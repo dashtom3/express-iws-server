@@ -12,6 +12,7 @@ class System extends BaseComponent{
 		this.addSystem = this.addSystem.bind(this)
     this.addLocation = this.addLocation.bind(this)
     this.addRoom = this.addRoom.bind(this)
+    this.addDevice = this.addDevice.bind(this)
 	}
 	async addSystem(req, res, next){
 		const form = new formidable.IncomingForm();
@@ -130,7 +131,8 @@ class System extends BaseComponent{
   }
   async getAllSystem(req, res, next){
     try{
-			const allSystem = await SystemModel.find({}, '-_id -__v -location.room.device').sort({id: -1})
+			// const allSystem = await SystemModel.find({}, '-_id -__v -location.room.device').sort({id: -1})
+      const allSystem = await SystemModel.find({}, '-_id -__v').sort({id: -1})
 			res.send({
 				status: 1,
 				data: {data:allSystem}
@@ -396,14 +398,20 @@ class System extends BaseComponent{
 				return
 			}
 			try{
-				// await SystemModel.findOneAndUpdate(
-        //   {'location.room.id':id},
-        //   {
-        //     '$set':{
-        //       "location.$.$.name":name,
-        //     }
-        //   }
-        // )
+        const system = await SystemModel.findOne({'location.room.id':id},'location.room.$')
+        system.location[0].room.forEach(function(item){
+          if(item.id == id) {
+            item.name = name
+          }
+        })
+        await SystemModel.findOneAndUpdate(
+          {'location.room.id':id},
+          {
+            '$set':{
+              "location.$.room":system.location[0].room,
+            }
+          }
+        )
 				res.send({
 					status: 1,
 					message: '修改成功',
@@ -430,12 +438,192 @@ class System extends BaseComponent{
 			return
 		}
     try {
-      // await SystemModel.findOneAndRemove({'location.id':id})
-      await SystemModel.update(
-        {'location.id':id},
+      const system = await SystemModel.findOne({'location.room.id':id},'location.room.$')
+      var temp;
+      system.location[0].room.forEach(function(item,index){
+        if(item.id == id) {
+          temp = index
+        }
+      })
+      system.location[0].room.splice(temp,1)
+      await SystemModel.findOneAndUpdate(
+        {'location.room.id':id},
         {
-          '$pull':{
-            location:{ id : id },
+          '$set':{
+            "location.$.room":system.location[0].room,
+          }
+        }
+      )
+      res.send({
+				status: 1,
+				message: '删除成功'
+			})
+    }catch(err){
+			console.log('删除失败', err);
+			res.send({
+				status: 0,
+				type: 'ERROR_GET_LIST',
+				message: '删除失败'
+			})
+		}
+  }
+  async addDevice(req, res, next){
+		const form = new formidable.IncomingForm();
+		form.parse(req, async (err, fields, files) => {
+			if (err) {
+				res.send({
+					status: 0,
+					type: 'FORM_DATA_ERROR',
+					message: '表单信息错误'
+				})
+				return
+			}
+			const {id,name}  = fields; // room id
+			try{
+				if (!name || !id) {
+					throw new Error('name不能为空')
+				}
+			}catch(err){
+				console.log(err.message, err);
+				res.send({
+					status: 0,
+					type: 'GET_ERROR_PARAM',
+					message: err.message,
+				})
+				return
+			}
+			try{
+				const system = await SystemModel.findOne({"location.room.id": id},'location.$')
+				if (!system) {
+					console.log('系统不存在');
+					res.send({
+						status: 0,
+						type: 'SYSTEM_NOT_EXIST',
+						message: '该系统不存在',
+					})
+				}else{
+          console.log(system.location[0].room)
+					const device_id = await this.getId('device_id');
+					const newDevice = {
+						id: device_id,
+            name: name,
+						create_time: dtime().format('YYYY-MM-DD'),
+					}
+          system.location[0].room.forEach(function(item){
+            if(item.id == id) {
+              item.device = item.device.concat(newDevice)
+            }
+          })
+          console.log(system.location[0].room)
+          await SystemModel.findOneAndUpdate(
+            {'location.room.id':id},
+            {
+              '$set':{
+                "location.$.room":system.location[0].room,
+              }
+            }
+          )
+					res.send({
+						status: 1,
+						message: '添加成功',
+					})
+				}
+			}catch(err){
+				console.log('添加地点失败', err);
+				res.send({
+					status: 0,
+					type: 'INTERFACE_FAILED',
+					message: '添加地点失败',
+				})
+			}
+		})
+	}
+  async updateDevice(req, res, next){
+		const form = new formidable.IncomingForm();
+		form.parse(req, async (err, fields, files) => {
+			if (err) {
+				res.send({
+					status: 0,
+					type: 'FORM_DATA_ERROR',
+					message: '表单信息错误'
+				})
+				return
+			}
+			const {id, name } = fields; //device id
+			try{
+				if (!name || !id) {
+					throw new Error('字段不能为空')
+				}
+			}catch(err){
+				console.log(err.message, err);
+				res.send({
+					status: 0,
+					type: 'GET_ERROR_PARAM',
+					message: err.message,
+				})
+				return
+			}
+			try{
+        const system = await SystemModel.findOne({'location.room.device.id':id},'location.room.device.$')
+        system.location[0].room.forEach(function(item){
+          item.device.forEach(function(item2){
+            if(item2.id == id) {
+              item2.name = name
+            }
+          })
+        })
+        await SystemModel.findOneAndUpdate(
+          {'location.room.device.id':id},
+          {
+            '$set':{
+              "location.$.room":system.location[0].room,
+            }
+          }
+        )
+				res.send({
+					status: 1,
+					message: '修改成功',
+				})
+			}catch(err){
+				console.log('修改房间失败', err);
+				res.send({
+					status: 0,
+					type: 'INTERFACE_FAILED',
+					message: '修改房间失败',
+				})
+			}
+		})
+	}
+  async deleteDevice(req, res, next){
+    const id = req.params.id
+    if (!id || !Number(id)) {
+			console.log('参数错误');
+			res.send({
+				status: 0,
+				type: 'ERROR_PARAMS',
+				message: '参数错误',
+			})
+			return
+		}
+    try {
+      const system = await SystemModel.findOne({'location.room.device.id':id},'location.room.device.$')
+      var temp;
+      system.location[0].room.forEach(function(item,index){
+        item.device.forEach(function(item2){
+          if(item2.id == id) {
+            temp = index
+          }
+        })
+        if(temp){
+          item.device.splice(temp,1)
+        }
+      })
+
+      await SystemModel.findOneAndUpdate(
+        {'location.room.device.id':id},
+        {
+          '$set':{
+            "location.$.room":system.location[0].room,
           }
         }
       )

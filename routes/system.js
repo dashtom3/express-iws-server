@@ -16,11 +16,11 @@ router.post('/location/update',System.updateLocation); //已测
 router.get('/location/delete/:id',System.deleteLocation) //已测
 
 router.post('/room/add',System.addRoom);       //已测
-router.post('/room/update',System.updateRoom);
-router.get('/room/delete/:id',System.deleteRoom);
-//
-// router.post('/device/add',System.addDevice);
-// router.post('/device/update',System.updateDevice);
-// router.get('/device/delete/:system_id',System.deleteDevice)
+router.post('/room/update',System.updateRoom);  //已测
+router.get('/room/delete/:id',System.deleteRoom); //已测
+
+router.post('/device/add',System.addDevice);
+router.post('/device/update',System.updateDevice);
+router.get('/device/delete/:id',System.deleteDevice);
 
 export default router
