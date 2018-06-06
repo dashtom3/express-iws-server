@@ -11,9 +11,7 @@ class System extends BaseComponent{
 		super()
 		this.addSystem = this.addSystem.bind(this)
     this.addLocation = this.addLocation.bind(this)
-		// this.register = this.register.bind(this)
-		// this.encryption = this.encryption.bind(this)
-		// this.TokenAdd = this.TokenAdd.bind(this)
+    this.addRoom = this.addRoom.bind(this)
 	}
 	async addSystem(req, res, next){
 		const form = new formidable.IncomingForm();
@@ -63,7 +61,7 @@ class System extends BaseComponent{
 			}
 		})
 	}
-  async addLocation(req, res, next){
+  async updateSystem(req, res, next){
 		const form = new formidable.IncomingForm();
 		form.parse(req, async (err, fields, files) => {
 			if (err) {
@@ -74,10 +72,10 @@ class System extends BaseComponent{
 				})
 				return
 			}
-			const {system_id, name, lat , lng , address} = fields;
+			const {id ,name, pic} = fields;
 			try{
-				if (!name || !lat || !lng || !address || !system_id) {
-					throw new Error('name不能为空')
+				if (!id || !name || !pic) {
+					throw new Error('字段不能为空')
 				}
 			}catch(err){
 				console.log(err.message, err);
@@ -89,7 +87,103 @@ class System extends BaseComponent{
 				return
 			}
 			try{
-				const system = await SystemModel.findOne({id: system_id})
+				await SystemModel.findOneAndUpdate({id:id},{$set:{name:name,pic:pic}})
+				res.send({
+					status: 1,
+					message: '更新成功',
+				})
+			}catch(err){
+				console.log('更新系统失败', err);
+				res.send({
+					status: 0,
+					type: 'INTERFACE_FAILED',
+					message: '更新系统失败',
+				})
+			}
+		})
+	}
+  async deleteSystem(req, res, next){
+    const id = req.params.id
+    if (!id || !Number(id)) {
+			console.log('参数错误');
+			res.send({
+				status: 0,
+				type: 'ERROR_PARAMS',
+				message: '参数错误',
+			})
+			return
+		}
+    try {
+      await SystemModel.findOneAndRemove({id:id})
+      res.send({
+				status: 1,
+				message: '删除成功'
+			})
+    }catch(err){
+			console.log('删除失败', err);
+			res.send({
+				status: 0,
+				type: 'ERROR_GET_LIST',
+				message: '删除失败'
+			})
+		}
+  }
+  async getAllSystem(req, res, next){
+    try{
+			const allSystem = await SystemModel.find({}, '-_id -__v -location.room.device').sort({id: -1})
+			res.send({
+				status: 1,
+				data: {data:allSystem}
+			})
+		}catch(err){
+			console.log('获取列表失败', err);
+			res.send({
+				status: 0,
+				type: 'ERROR_GET_LIST',
+				message: '获取列表失败'
+			})
+		}
+	}
+  async addLocation(req, res, next){
+		const form = new formidable.IncomingForm();
+		form.parse(req, async (err, fields, files) => {
+			if (err) {
+				res.send({
+					status: 0,
+					type: 'FORM_DATA_ERROR',
+					message: '表单信息错误'
+				})
+				return
+			}
+			const {id, name, lat , lng , address} = fields; //system id
+			try{
+				if (!name || !lat || !lng || !address || !id) {
+					throw new Error('字段不能为空')
+				}
+			}catch(err){
+				console.log(err.message, err);
+				res.send({
+					status: 0,
+					type: 'GET_ERROR_PARAM',
+					message: err.message,
+				})
+				return
+			}
+			try{
+        // SystemModel.update({"id":id},{
+        //   '$push':{
+        //     location:{
+        //       id: location_id,
+        //       name: name,
+        //       lat: lat,
+        //       lng: lng,
+  			// 			create_time: dtime().format('YYYY-MM-DD'),
+  			// 			address: address,
+        //       room: [],
+        //     }
+        //   }
+        // })
+				const system = await SystemModel.findOne({id: id})
 				if (!system) {
 					console.log('系统不存在');
 					res.send({
@@ -107,7 +201,6 @@ class System extends BaseComponent{
             lng: lng,
 						create_time: dtime().format('YYYY-MM-DD'),
 						address: address,
-            room: [],
 					}
           system.location = system.location.concat(newLocation)
 					await system.save()
@@ -126,6 +219,91 @@ class System extends BaseComponent{
 			}
 		})
 	}
+  async updateLocation(req, res, next){
+		const form = new formidable.IncomingForm();
+		form.parse(req, async (err, fields, files) => {
+			if (err) {
+				res.send({
+					status: 0,
+					type: 'FORM_DATA_ERROR',
+					message: '表单信息错误'
+				})
+				return
+			}
+			const {id, name, lat , lng , address} = fields; //location id
+			try{
+				if (!name || !lat || !lng || !address || !id) {
+					throw new Error('字段不能为空')
+				}
+			}catch(err){
+				console.log(err.message, err);
+				res.send({
+					status: 0,
+					type: 'GET_ERROR_PARAM',
+					message: err.message,
+				})
+				return
+			}
+			try{
+				await SystemModel.findOneAndUpdate(
+          {'location.id':id},
+          {
+            '$set':{
+              "location.$.name":name,
+              "location.$.lat":lat,
+              "location.$.lng":lng,
+              "location.$.address":address,
+            }
+          }
+        )
+				res.send({
+					status: 1,
+					message: '修改成功',
+				})
+			}catch(err){
+				console.log('修改地点失败', err);
+				res.send({
+					status: 0,
+					type: 'INTERFACE_FAILED',
+					message: '修改地点失败',
+				})
+			}
+		})
+	}
+  async deleteLocation(req, res, next){
+    const id = req.params.id
+    if (!id || !Number(id)) {
+			console.log('参数错误');
+			res.send({
+				status: 0,
+				type: 'ERROR_PARAMS',
+				message: '参数错误',
+			})
+			return
+		}
+    try {
+      // await SystemModel.findOneAndRemove({'location.id':id})
+      await SystemModel.update(
+        {'location.id':id},
+        {
+          '$pull':{
+            location:{ id : id },
+          }
+        }
+      )
+      res.send({
+				status: 1,
+				message: '删除成功'
+			})
+    }catch(err){
+			console.log('删除失败', err);
+			res.send({
+				status: 0,
+				type: 'ERROR_GET_LIST',
+				message: '删除失败'
+			})
+		}
+  }
   async addRoom(req, res, next){
 		const form = new formidable.IncomingForm();
 		form.parse(req, async (err, fields, files) => {
@@ -137,9 +315,9 @@ class System extends BaseComponent{
 				})
 				return
 			}
-			const {location_id,name}  = fields;
+			const {id,name}  = fields; // location id
 			try{
-				if (!name || !location_id) {
+				if (!name || !id) {
 					throw new Error('name不能为空')
 				}
 			}catch(err){
@@ -152,8 +330,7 @@ class System extends BaseComponent{
 				return
 			}
 			try{
-				const system = await SystemModel.findOne({"location.id": location_id},'location')
-        console.log(system)
+				const system = await SystemModel.findOne({"location.id": id},'location.$')
 				if (!system) {
 					console.log('系统不存在');
 					res.send({
@@ -162,15 +339,22 @@ class System extends BaseComponent{
 						message: '该系统不存在',
 					})
 				}else{
-          console.log(system)
 					const room_id = await this.getId('room_id');
 					const newRoom = {
 						id: room_id,
             name: name,
 						create_time: dtime().format('YYYY-MM-DD'),
+            device: [],
 					}
-          // system.location = system.location.concat(newLocation)
-					// await system.save()
+          system.location[0].room = system.location[0].room.concat(newRoom)
+          await SystemModel.findOneAndUpdate(
+            {'location.id':id},
+            {
+              '$set':{
+                "location.$.room":system.location[0].room,
+              }
+            }
+          )
 					res.send({
 						status: 1,
 						message: '添加成功',
@@ -186,95 +370,89 @@ class System extends BaseComponent{
 			}
 		})
 	}
-  encryption(password){
-		const newpassword = this.Md5(this.Md5(password).substr(2, 7) + this.Md5(password));
-		return newpassword
+  async updateRoom(req, res, next){
+		const form = new formidable.IncomingForm();
+		form.parse(req, async (err, fields, files) => {
+			if (err) {
+				res.send({
+					status: 0,
+					type: 'FORM_DATA_ERROR',
+					message: '表单信息错误'
+				})
+				return
+			}
+			const {id, name } = fields; //room id
+			try{
+				if (!name || !id) {
+					throw new Error('字段不能为空')
+				}
+			}catch(err){
+				console.log(err.message, err);
+				res.send({
+					status: 0,
+					type: 'GET_ERROR_PARAM',
+					message: err.message,
+				})
+				return
+			}
+			try{
+				// await SystemModel.findOneAndUpdate(
+        //   {'location.room.id':id},
+        //   {
+        //     '$set':{
+        //       "location.$.$.name":name,
+        //     }
+        //   }
+        // )
+				res.send({
+					status: 1,
+					message: '修改成功',
+				})
+			}catch(err){
+				console.log('修改房间失败', err);
+				res.send({
+					status: 0,
+					type: 'INTERFACE_FAILED',
+					message: '修改房间失败',
+				})
+			}
+		})
 	}
-	Md5(password){
-		const md5 = crypto.createHash('md5');
-		return md5.update(password).digest('base64');
-	}
-	TokenAdd(username,password){
-		return this.Md5(username+password);
-	}
-	async getAllSystem(req, res, next){
-		console.log('获取所有系统')
-		const {pageSize	= 10, pageNum = 1} = req.query;
-		try{
-			const allUser = await UserModel.find({}, '-_id -__v -password').sort({id: -1}).skip(Number(pageSize*(pageNum-1))).limit(Number(pageSize))
+  async deleteRoom(req, res, next){
+    const id = req.params.id
+    if (!id || !Number(id)) {
+			console.log('参数错误');
 			res.send({
-				status: 1,
-				data: {data:allUser,page:{pageNum:pageNum,pageSize:pageSize}}
+				status: 0,
+				type: 'ERROR_PARAMS',
+				message: '参数错误',
 			})
-		}catch(err){
-			console.log('获取列表失败', err);
+			return
+		}
+    try {
+      // await SystemModel.findOneAndRemove({'location.id':id})
+      await SystemModel.update(
+        {'location.id':id},
+        {
+          '$pull':{
+            location:{ id : id },
+          }
+        }
+      )
+      res.send({
+				status: 1,
+				message: '删除成功'
+			})
+    }catch(err){
+			console.log('删除失败', err);
 			res.send({
 				status: 0,
 				type: 'ERROR_GET_LIST',
-				message: '获取列表失败'
+				message: '删除失败'
 			})
 		}
-	}
-	async getUserInfo(req, res, next){
+  }
 
-		// if (!admin_id || !Number(admin_id)) {
-		// 	// console.log('获取管理员信息的session失效');
-		// 	res.send({
-		// 		status: 0,
-		// 		type: 'ERROR_SESSION',
-		// 		message: '获取管理员信息失败'
-		// 	})
-		// 	return
-		// }
-		// try{
-		// 	const info = await AdminModel.findOne({id: admin_id}, '-_id -__v -password');
-		// 	if (!info) {
-		// 		throw new Error('未找到当前管理员')
-		// 	}else{
-		// 		res.send({
-		// 			status: 1,
-		// 			data: info
-		// 		})
-		// 	}
-		// }catch(err){
-		// 	console.log('获取管理员信息失败');
-		// 	res.send({
-		// 		status: 0,
-		// 		type: 'GET_ADMIN_INFO_FAILED',
-		// 		message: '获取管理员信息失败'
-		// 	})
-		// }
-	}
-	async update(req, res, next){
-		// const user_id = req.params.user_id;
-		// if (!user_id || !Number(user_id)) {
-		// 	console.log('user_id参数错误', user_id)
-		// 	res.send({
-		// 		status: 0,
-		// 		type: 'ERROR_USERID',
-		// 		message: 'user_id参数错误',
-		// 	})
-		// 	return
-		// }
-		//
-		// try{
-		// 	const image_path = await this.getPath(req);
-		// 	await AdminModel.findOneAndUpdate({id: admin_id}, {$set: {avatar: image_path}});
-		// 	res.send({
-		// 		status: 1,
-		// 		image_path,
-		// 	})
-		// 	return
-		// }catch(err){
-		// 	console.log('上传图片失败', err);
-		// 	res.send({
-		// 		status: 0,
-		// 		type: 'ERROR_UPLOAD_IMG',
-		// 		message: '上传图片失败'
-		// 	})
-		// 	return
-		// }
-	}
 }
 
 export default new System()
