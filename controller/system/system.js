@@ -581,20 +581,18 @@ class System extends BaseComponent{
 		}
     try {
       const system = await SystemModel.findOne({'location.room.device._id':id},'location.room.device.$')
-      var temp;
-      system.location[0].room.forEach(function(item,index){
-        item.device.forEach(function(item2){
-          console.log(item2._id,id)
+      var temp = -1;
+      system.location[0].room.forEach(function(item){
+        item.device.forEach(function(item2,index){
+          //_id 是object类型，要记得转换
           if(item2._id == id) {
             temp = index
           }
         })
-        if(temp){
+        if(temp != -1){
           item.device.splice(temp,1)
-          console.log(temp)
         }
       })
-      console.log(system.location[0].room[0].device)
       await SystemModel.findOneAndUpdate(
         {'location.room.device._id':id},
         {
