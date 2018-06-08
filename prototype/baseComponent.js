@@ -11,7 +11,7 @@ qiniu.conf.SECRET_KEY = 'XNIW2dNffPBdaAhvm9dadBlJ-H6yyCTIJLxNM_N6';
 
 export default class BaseComponent {
 	constructor(){
-		this.idList = ['user_id', 'role_id','system_id','location_id','room_id','device_id'];
+		this.idList = ['user_id', 'role_id','system_id','location_id','room_id','device_id','basicDevice_id'];
 
 		this.imgTypeList = ['shop', 'food', 'avatar','default'];
 		this.uploadImg = this.uploadImg.bind(this)

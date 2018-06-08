@@ -9,10 +9,6 @@ import dtime from 'time-formater'
 class System extends BaseComponent{
 	constructor(){
 		super()
-		this.addSystem = this.addSystem.bind(this)
-    this.addLocation = this.addLocation.bind(this)
-    this.addRoom = this.addRoom.bind(this)
-    this.addDevice = this.addDevice.bind(this)
 	}
 	async addSystem(req, res, next){
 		const form = new formidable.IncomingForm();
@@ -40,9 +36,7 @@ class System extends BaseComponent{
 				return
 			}
 			try{
-				const system_id = await this.getId('system_id');
 				const newSystem = {
-					id: system_id,
           name: name,
           pic: pic,
 					create_time: dtime().format('YYYY-MM-DD'),
@@ -88,7 +82,7 @@ class System extends BaseComponent{
 				return
 			}
 			try{
-				await SystemModel.findOneAndUpdate({id:id},{$set:{name:name,pic:pic}})
+				await SystemModel.findOneAndUpdate({_id:id},{$set:{name:name,pic:pic}})
 				res.send({
 					status: 1,
 					message: '更新成功',
@@ -105,7 +99,7 @@ class System extends BaseComponent{
 	}
   async deleteSystem(req, res, next){
     const id = req.params.id
-    if (!id || !Number(id)) {
+    if (!id) {
 			console.log('参数错误');
 			res.send({
 				status: 0,
@@ -115,7 +109,7 @@ class System extends BaseComponent{
 			return
 		}
     try {
-      await SystemModel.findOneAndRemove({id:id})
+      await SystemModel.findOneAndRemove({_id:id})
       res.send({
 				status: 1,
 				message: '删除成功'
@@ -131,8 +125,8 @@ class System extends BaseComponent{
   }
   async getAllSystem(req, res, next){
     try{
-			// const allSystem = await SystemModel.find({}, '-_id -__v -location.room.device').sort({id: -1})
-      const allSystem = await SystemModel.find({}, '-_id -__v').sort({id: -1})
+			// const allSystem = await SystemModel.find({}, '-__v -location.room.device')
+      const allSystem = await SystemModel.find({}, '-__v')
 			res.send({
 				status: 1,
 				data: {data:allSystem}
@@ -172,20 +166,7 @@ class System extends BaseComponent{
 				return
 			}
 			try{
-        // SystemModel.update({"id":id},{
-        //   '$push':{
-        //     location:{
-        //       id: location_id,
-        //       name: name,
-        //       lat: lat,
-        //       lng: lng,
-  			// 			create_time: dtime().format('YYYY-MM-DD'),
-  			// 			address: address,
-        //       room: [],
-        //     }
-        //   }
-        // })
-				const system = await SystemModel.findOne({id: id})
+				const system = await SystemModel.findOne({_id: id})
 				if (!system) {
 					console.log('系统不存在');
 					res.send({
@@ -194,10 +175,7 @@ class System extends BaseComponent{
 						message: '该系统不存在',
 					})
 				}else{
-          console.log(system)
-					const location_id = await this.getId('location_id');
 					const newLocation = {
-						id: location_id,
             name: name,
             lat: lat,
             lng: lng,
@@ -248,7 +226,7 @@ class System extends BaseComponent{
 			}
 			try{
 				await SystemModel.findOneAndUpdate(
-          {'location.id':id},
+          {'location._id':id},
           {
             '$set':{
               "location.$.name":name,
@@ -274,7 +252,7 @@ class System extends BaseComponent{
 	}
   async deleteLocation(req, res, next){
     const id = req.params.id
-    if (!id || !Number(id)) {
+    if (!id) {
 			console.log('参数错误');
 			res.send({
 				status: 0,
@@ -286,10 +264,10 @@ class System extends BaseComponent{
     try {
       // await SystemModel.findOneAndRemove({'location.id':id})
       await SystemModel.update(
-        {'location.id':id},
+        {'location._id':id},
         {
           '$pull':{
-            location:{ id : id },
+            location:{ _id : id },
           }
         }
       )
@@ -332,7 +310,7 @@ class System extends BaseComponent{
 				return
 			}
 			try{
-				const system = await SystemModel.findOne({"location.id": id},'location.$')
+				const system = await SystemModel.findOne({"location._id": id},'location.$')
 				if (!system) {
 					console.log('系统不存在');
 					res.send({
@@ -341,16 +319,14 @@ class System extends BaseComponent{
 						message: '该系统不存在',
 					})
 				}else{
-					const room_id = await this.getId('room_id');
 					const newRoom = {
-						id: room_id,
             name: name,
 						create_time: dtime().format('YYYY-MM-DD'),
             device: [],
 					}
           system.location[0].room = system.location[0].room.concat(newRoom)
           await SystemModel.findOneAndUpdate(
-            {'location.id':id},
+            {'location._id':id},
             {
               '$set':{
                 "location.$.room":system.location[0].room,
@@ -398,14 +374,14 @@ class System extends BaseComponent{
 				return
 			}
 			try{
-        const system = await SystemModel.findOne({'location.room.id':id},'location.room.$')
+        const system = await SystemModel.findOne({'location.room._id':id},'location.room.$')
         system.location[0].room.forEach(function(item){
-          if(item.id == id) {
+          if(item._id == id) {
             item.name = name
           }
         })
         await SystemModel.findOneAndUpdate(
-          {'location.room.id':id},
+          {'location.room._id':id},
           {
             '$set':{
               "location.$.room":system.location[0].room,
@@ -428,7 +404,7 @@ class System extends BaseComponent{
 	}
   async deleteRoom(req, res, next){
     const id = req.params.id
-    if (!id || !Number(id)) {
+    if (!id) {
 			console.log('参数错误');
 			res.send({
 				status: 0,
@@ -438,16 +414,16 @@ class System extends BaseComponent{
 			return
 		}
     try {
-      const system = await SystemModel.findOne({'location.room.id':id},'location.room.$')
+      const system = await SystemModel.findOne({'location.room._id':id},'location.room.$')
       var temp;
       system.location[0].room.forEach(function(item,index){
-        if(item.id == id) {
+        if(item._id == id) {
           temp = index
         }
       })
       system.location[0].room.splice(temp,1)
       await SystemModel.findOneAndUpdate(
-        {'location.room.id':id},
+        {'location.room._id':id},
         {
           '$set':{
             "location.$.room":system.location[0].room,
@@ -493,7 +469,7 @@ class System extends BaseComponent{
 				return
 			}
 			try{
-				const system = await SystemModel.findOne({"location.room.id": id},'location.$')
+				const system = await SystemModel.findOne({"location.room._id": id},'location.$')
 				if (!system) {
 					console.log('系统不存在');
 					res.send({
@@ -503,20 +479,18 @@ class System extends BaseComponent{
 					})
 				}else{
           console.log(system.location[0].room)
-					const device_id = await this.getId('device_id');
 					const newDevice = {
-						id: device_id,
             name: name,
 						create_time: dtime().format('YYYY-MM-DD'),
 					}
           system.location[0].room.forEach(function(item){
-            if(item.id == id) {
+            if(item._id == id) {
               item.device = item.device.concat(newDevice)
             }
           })
           console.log(system.location[0].room)
           await SystemModel.findOneAndUpdate(
-            {'location.room.id':id},
+            {'location.room._id':id},
             {
               '$set':{
                 "location.$.room":system.location[0].room,
@@ -564,16 +538,16 @@ class System extends BaseComponent{
 				return
 			}
 			try{
-        const system = await SystemModel.findOne({'location.room.device.id':id},'location.room.device.$')
+        const system = await SystemModel.findOne({'location.room.device._id':id},'location.room.device.$')
         system.location[0].room.forEach(function(item){
           item.device.forEach(function(item2){
-            if(item2.id == id) {
+            if(item2._id == id) {
               item2.name = name
             }
           })
         })
         await SystemModel.findOneAndUpdate(
-          {'location.room.device.id':id},
+          {'location.room.device._id':id},
           {
             '$set':{
               "location.$.room":system.location[0].room,
@@ -585,18 +559,18 @@ class System extends BaseComponent{
 					message: '修改成功',
 				})
 			}catch(err){
-				console.log('修改房间失败', err);
+				console.log('修改设备失败', err);
 				res.send({
 					status: 0,
 					type: 'INTERFACE_FAILED',
-					message: '修改房间失败',
+					message: '修改设备失败',
 				})
 			}
 		})
 	}
   async deleteDevice(req, res, next){
     const id = req.params.id
-    if (!id || !Number(id)) {
+    if (!id) {
 			console.log('参数错误');
 			res.send({
 				status: 0,
@@ -606,21 +580,23 @@ class System extends BaseComponent{
 			return
 		}
     try {
-      const system = await SystemModel.findOne({'location.room.device.id':id},'location.room.device.$')
+      const system = await SystemModel.findOne({'location.room.device._id':id},'location.room.device.$')
       var temp;
       system.location[0].room.forEach(function(item,index){
         item.device.forEach(function(item2){
-          if(item2.id == id) {
+          console.log(item2._id,id)
+          if(item2._id == id) {
             temp = index
           }
         })
         if(temp){
           item.device.splice(temp,1)
+          console.log(temp)
         }
       })
-
+      console.log(system.location[0].room[0].device)
       await SystemModel.findOneAndUpdate(
-        {'location.room.device.id':id},
+        {'location.room.device._id':id},
         {
           '$set':{
             "location.$.room":system.location[0].room,

@@ -3,11 +3,15 @@
 import mongoose from 'mongoose'
 
 const Schema = mongoose.Schema;
-
+const sensorSchema = new Schema({
+  transfer_type: Number, // modbus s7
+  point_src: String,   //点表
+  create_time: String,
+})
 const basicDeviceSchema = new Schema({
-	id: Number,
 	create_time: String,
 	name: String,
+  sensor:[sensorSchema],
   // TODO: 所有的点表合集
 })
 

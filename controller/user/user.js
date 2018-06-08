@@ -1,6 +1,7 @@
 'use strict';
 
 import UserModel from '../../models/user/user'
+import RoleModel from '../../models/user/role'
 import BaseComponent from '../../prototype/baseComponent'
 import crypto from 'crypto'
 import formidable from 'formidable'
@@ -107,7 +108,7 @@ class User extends BaseComponent{
 				return
 			}
 			try{
-				const user = await UserModel.findOne({username})
+				const user = await UserModel.findOne({username:username})
 				if (user) {
 					console.log('该用户已经存在');
 					res.send({
@@ -116,14 +117,13 @@ class User extends BaseComponent{
 						message: '该用户已经存在',
 					})
 				}else{
-					const user_id = await this.getId('user_id');
 					const newpassword = this.encryption(password);
+					const role = await RoleModel.findOne({name:"普通用户"})
 					const newUser = {
 						username,
 						password: newpassword,
-						id: user_id,
 						create_time: dtime().format('YYYY-MM-DD'),
-						role_id: 2,
+						role:role._id ,
 						realName: '',
 						address: '',
 						token:this.TokenAdd(username,password)
@@ -161,7 +161,7 @@ class User extends BaseComponent{
 		console.log('获取所有用户')
 		const {pageSize	= 10, pageNum = 1} = req.query;
 		try{
-			const allUser = await UserModel.find({}, '-_id -__v -password').sort({id: -1}).skip(Number(pageSize*(pageNum-1))).limit(Number(pageSize))
+			const allUser = await UserModel.find({}, '-__v -password').skip(Number(pageSize*(pageNum-1))).limit(Number(pageSize)).populate('role')
 			res.send({
 				status: 1,
 				data: {data:allUser,page:{pageNum:pageNum,pageSize:pageSize}}

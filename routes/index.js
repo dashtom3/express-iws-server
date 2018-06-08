@@ -3,6 +3,7 @@
 
 import user from './user'
 import system from './system'
+import basicDevice from './basicDevice'
 
 export default app => {
 	// app.get('/', (req, res, next) => {
@@ -10,4 +11,5 @@ export default app => {
 	// });
 	app.use('/user', user);
 	app.use('/system', system);
+	app.use('/basicDevice', basicDevice);
 }
