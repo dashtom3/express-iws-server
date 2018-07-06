@@ -12,7 +12,44 @@ class Data extends BaseComponent{
 	constructor(){
 		super()
     }
-   
+    async collectData(req, res, next){
+        const _id = req.params._id
+        if (!_id) {
+            console.log('参数错误');
+            res.send({
+                status: 0,
+                type: 'ERROR_PARAMS',
+                message: '参数错误',
+            })
+            return
+        }
+        const form = new formidable.IncomingForm();
+        form.parse(req, async (err, fields, files) => {
+            if (err) {
+                res.send({
+                    status: 0,
+                    type: 'FORM_DATA_ERROR',
+                    message: '表单信息错误'
+                })
+                return
+            }
+            try {
+               
+                console.log(device)
+                
+                
+                
+            }catch(err){
+                console.log('开启失败', err);
+                res.send({
+                    status: 0,
+                    type: 'ERROR_INTERFACE_ERROR',
+                    message: '开启失败'
+                })
+            }
+        })
+       
+    }
     async startRead(req, res, next){
         const _id = req.params._id
         if (!_id) {
@@ -32,19 +69,43 @@ class Data extends BaseComponent{
                 console.log(config.data_ip+config.api.start)
                 var p = await axios.post(config.data_ip+config.api.start,device)
                 console.log(p)
-                await SensorModel.findOneAndUpdate({'_id':device.sensor[0]._id},{$set:{isStart:true}})
-                res.send({
-                    status: 1,
-                    message: '开启成功'
-                })
+                if(p.data.status ==1) {
+                    
+                    await SensorModel.findOneAndUpdate({'_id':device.sensor[0]._id},{$set:{isStart:true}})
+                    res.send({
+                        status: 1,
+                        message: '开启成功'
+                    })
+                }else {
+                    res.send({
+                        status: 0,
+                        message: '开启失败'
+                    })
+                }
+                
+            }else {
+               
+                var p = await axios.post(config.data_ip+config.api.stop,device)
+                console.log(p)
+                if(p.data.status ==1) {
+                    await SensorModel.findOneAndUpdate({'_id':device.sensor[0]._id},{$set:{isStart:false}})
+                    res.send({
+                        status: 1,
+                        message: '关闭成功'
+                    })
+                }else {
+                    res.send({
+                        status: 0,
+                        message: '关闭失败'
+                    })
+                }
             }
             
         }catch(err){
-			console.log('删除失败', err);
+			console.log('关闭失败', err);
 			res.send({
 				status: 0,
-				type: 'ERROR_GET_LIST',
-				message: '删除失败'
+				message: '关闭失败'
 			})
 		}
   }

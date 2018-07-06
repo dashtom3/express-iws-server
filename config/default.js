@@ -1,7 +1,7 @@
 'use strict';
 
 module.exports = {
-	port: 8001,
+	port: 6784,
 	data_ip:'http://localhost:3000/',
 	url: 'mongodb://116.62.228.3:27017/db',
 	api:{

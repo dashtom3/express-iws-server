@@ -582,6 +582,10 @@ class System extends BaseComponent{
 			return
 		}
     try {
+			var device = await DeviceModel.findOne({'_id':_id})
+			for(var i=0;i<device.sensor.length;i++){
+				await SensorModel.findOneAndRemove({'_id':device.sensor[i]})
+			}
       await DeviceModel.findOneAndRemove({'_id':_id})
       res.send({
 				status: 1,
