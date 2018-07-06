@@ -1,15 +1,14 @@
 'use strict';
 
 import express from 'express'
-import Role from '../controller/user/role'
+import Data from '../controller/system/data'
 import Check from '../middlewares/check'
 
 const router = express.Router()
 
-router.post('/add', Role.addRole);
-router.post('/update', Role.updateRole);
-router.post('/delete/:_id', Role.deleteRole)
-router.get('/all',Role.getAllRole);
+router.get('/start/:_id', Data.startRead);
+router.get('/stop/:_id', Data.stopRead);
+router.get('/allStartSensor',Data.getAllSensor)
 
 // router.get('/info', User.getUserInfo);
 // router.post('/update/:user_id', User.update);

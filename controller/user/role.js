@@ -68,9 +68,9 @@ class Role extends BaseComponent{
 				})
 				return
 			}
-			const {id, name , location_ids} = fields;
+			const {_id, name , location_ids} = fields;
 			try{
-				if (!id || !name || !location_ids) {
+				if (!_id || !name || !location_ids) {
 					throw new Error('参数错误')
 				}
 			}catch(err){
@@ -83,12 +83,11 @@ class Role extends BaseComponent{
 				return
 			}
 			try{
-          await SystemModel.findOneAndUpdate({_id:id},{$set:{name:name,location:location_ids}})
+          await SystemModel.findOneAndUpdate({_id:_id},{$set:{name:name,location:location_ids}})
   				res.send({
   					status: 1,
   					message: '更新成功',
   				})
-				}
 			}catch(err){
 				console.log('更新失败', err);
 				res.send({
@@ -100,8 +99,8 @@ class Role extends BaseComponent{
 		})
 	}
   async deleteRole(req, res, next){
-    const id = req.params.id
-    if (!id) {
+    const _id = req.params._id
+    if (!_id) {
 			console.log('参数错误');
 			res.send({
 				status: 0,
@@ -111,7 +110,7 @@ class Role extends BaseComponent{
 			return
 		}
     try {
-      await RoleModel.findOneAndRemove({_id:id})
+      await RoleModel.findOneAndRemove({_id:_id})
       res.send({
 				status: 1,
 				message: '删除成功'
@@ -129,7 +128,7 @@ class Role extends BaseComponent{
 		console.log('获取所有角色')
 		const {pageSize	= 10, pageNum = 1} = req.query;
 		try{
-			const allRole = await RoleModel.find({}, '-__v').sort({id: -1}).skip(Number(pageSize*(pageNum-1))).limit(Number(pageSize))
+			const allRole = await RoleModel.find({}, '-__v').sort({_id: -1}).skip(Number(pageSize*(pageNum-1))).limit(Number(pageSize))
 			res.send({
 				status: 1,
 				data: {data:allRole,page:{pageNum:pageNum,pageSize:pageSize}}

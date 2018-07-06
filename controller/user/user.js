@@ -161,10 +161,14 @@ class User extends BaseComponent{
 		console.log('获取所有用户')
 		const {pageSize	= 10, pageNum = 1} = req.query;
 		try{
+			var totalPage;
+			await UserModel.find(function(err, user){
+				totalPage = (user.length-1)/pageSize+1
+			})
 			const allUser = await UserModel.find({}, '-__v -password').skip(Number(pageSize*(pageNum-1))).limit(Number(pageSize)).populate('role')
 			res.send({
 				status: 1,
-				data: {data:allUser,page:{pageNum:pageNum,pageSize:pageSize}}
+				data: {data:allUser,page:{pageNum:pageNum,pageSize:pageSize,totalPage:totalPage}}
 			})
 		}catch(err){
 			console.log('获取列表失败', err);

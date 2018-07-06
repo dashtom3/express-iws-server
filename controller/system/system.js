@@ -1,10 +1,16 @@
 'use strict';
 
 import SystemModel from '../../models/system/system'
+import LocationModel from '../../models/system/location'
+import RoomModel from '../../models/system/room'
+import DeviceModel from '../../models/system/device'
+import SensorModel from '../../models/system/sensor'
+import AlarmModel from '../../models/system/alarm'
 import BaseComponent from '../../prototype/baseComponent'
 import crypto from 'crypto'
 import formidable from 'formidable'
 import dtime from 'time-formater'
+import Sensor from '../../models/system/sensor';
 
 class System extends BaseComponent{
 	constructor(){
@@ -37,9 +43,10 @@ class System extends BaseComponent{
 			}
 			try{
 				const newSystem = {
-          name: name,
-          pic: pic,
+          			name: name,
+          			pic: pic,
 					create_time: dtime().format('YYYY-MM-DD'),
+					location:[],
 				}
 				await SystemModel.create(newSystem)
 				res.send({
@@ -67,9 +74,9 @@ class System extends BaseComponent{
 				})
 				return
 			}
-			const {id ,name, pic} = fields;
+			const {_id ,name, pic} = fields;
 			try{
-				if (!id || !name || !pic) {
+				if (!_id || !name || !pic) {
 					throw new Error('字段不能为空')
 				}
 			}catch(err){
@@ -82,7 +89,7 @@ class System extends BaseComponent{
 				return
 			}
 			try{
-				await SystemModel.findOneAndUpdate({_id:id},{$set:{name:name,pic:pic}})
+				await SystemModel.findOneAndUpdate({_id:_id},{$set:{name:name,pic:pic}})
 				res.send({
 					status: 1,
 					message: '更新成功',
@@ -98,8 +105,8 @@ class System extends BaseComponent{
 		})
 	}
   async deleteSystem(req, res, next){
-    const id = req.params.id
-    if (!id) {
+    const _id = req.params._id
+    if (!_id) {
 			console.log('参数错误');
 			res.send({
 				status: 0,
@@ -109,7 +116,7 @@ class System extends BaseComponent{
 			return
 		}
     try {
-      await SystemModel.findOneAndRemove({_id:id})
+      await SystemModel.findOneAndRemove({_id:_id})
       res.send({
 				status: 1,
 				message: '删除成功'
@@ -126,7 +133,7 @@ class System extends BaseComponent{
   async getAllSystem(req, res, next){
     try{
 			// const allSystem = await SystemModel.find({}, '-__v -location.room.device')
-      const allSystem = await SystemModel.find({}, '-__v')
+      const allSystem = await SystemModel.find({}, '-__v').populate({path:'location',populate:{path:'room',populate:{path:'device',populate:{path:"sensor",populate:[{path:'point'},{path:'alarm'}]}}}})
 			res.send({
 				status: 1,
 				data: {data:allSystem}
@@ -151,9 +158,9 @@ class System extends BaseComponent{
 				})
 				return
 			}
-			const {id, name, lat , lng , address} = fields; //system id
+			const {_id, name, lat , lng , address} = fields; //system id
 			try{
-				if (!name || !lat || !lng || !address || !id) {
+				if (!name || !lat || !lng || !address || !_id) {
 					throw new Error('字段不能为空')
 				}
 			}catch(err){
@@ -166,7 +173,7 @@ class System extends BaseComponent{
 				return
 			}
 			try{
-				const system = await SystemModel.findOne({_id: id})
+				const system = await SystemModel.findOne({_id: _id})
 				if (!system) {
 					console.log('系统不存在');
 					res.send({
@@ -182,7 +189,8 @@ class System extends BaseComponent{
 						create_time: dtime().format('YYYY-MM-DD'),
 						address: address,
 					}
-          system.location = system.location.concat(newLocation)
+					var result = await LocationModel.create(newLocation)
+          system.location = system.location.concat(result._id)
 					await system.save()
 					res.send({
 						status: 1,
@@ -210,9 +218,9 @@ class System extends BaseComponent{
 				})
 				return
 			}
-			const {id, name, lat , lng , address} = fields; //location id
+			const {_id, name, lat , lng , address} = fields; //location id
 			try{
-				if (!name || !lat || !lng || !address || !id) {
+				if (!name || !lat || !lng || !address || !_id) {
 					throw new Error('字段不能为空')
 				}
 			}catch(err){
@@ -225,17 +233,7 @@ class System extends BaseComponent{
 				return
 			}
 			try{
-				await SystemModel.findOneAndUpdate(
-          {'location._id':id},
-          {
-            '$set':{
-              "location.$.name":name,
-              "location.$.lat":lat,
-              "location.$.lng":lng,
-              "location.$.address":address,
-            }
-          }
-        )
+				await LocationModel.findOneAndUpdate({'_id':_id},{$set:{name:name,lat:lat,lng:lng,address:address}})
 				res.send({
 					status: 1,
 					message: '修改成功',
@@ -251,8 +249,8 @@ class System extends BaseComponent{
 		})
 	}
   async deleteLocation(req, res, next){
-    const id = req.params.id
-    if (!id) {
+    const _id = req.params._id
+    if (!_id) {
 			console.log('参数错误');
 			res.send({
 				status: 0,
@@ -262,15 +260,7 @@ class System extends BaseComponent{
 			return
 		}
     try {
-      // await SystemModel.findOneAndRemove({'location.id':id})
-      await SystemModel.update(
-        {'location._id':id},
-        {
-          '$pull':{
-            location:{ _id : id },
-          }
-        }
-      )
+      await LocationModel.findOneAndRemove({'_id':_id})
       res.send({
 				status: 1,
 				message: '删除成功'
@@ -295,9 +285,9 @@ class System extends BaseComponent{
 				})
 				return
 			}
-			const {id,name}  = fields; // location id
+			const {_id,name}  = fields; // location id
 			try{
-				if (!name || !id) {
+				if (!name || !_id) {
 					throw new Error('name不能为空')
 				}
 			}catch(err){
@@ -310,13 +300,13 @@ class System extends BaseComponent{
 				return
 			}
 			try{
-				const system = await SystemModel.findOne({"location._id": id},'location.$')
-				if (!system) {
-					console.log('系统不存在');
+				const location = await LocationModel.findOne({"_id": _id})
+				if (!location) {
+					console.log('地点不存在');
 					res.send({
 						status: 0,
-						type: 'SYSTEM_NOT_EXIST',
-						message: '该系统不存在',
+						type: 'LOCATION_NOT_EXIST',
+						message: '该地点不存在',
 					})
 				}else{
 					const newRoom = {
@@ -324,26 +314,20 @@ class System extends BaseComponent{
 						create_time: dtime().format('YYYY-MM-DD'),
             device: [],
 					}
-          system.location[0].room = system.location[0].room.concat(newRoom)
-          await SystemModel.findOneAndUpdate(
-            {'location._id':id},
-            {
-              '$set':{
-                "location.$.room":system.location[0].room,
-              }
-            }
-          )
+					var result = await RoomModel.create(newRoom)
+          location.room = location.room.concat(result._id)
+          await location.save()
 					res.send({
 						status: 1,
 						message: '添加成功',
 					})
 				}
 			}catch(err){
-				console.log('添加地点失败', err);
+				console.log('添加房间失败', err);
 				res.send({
 					status: 0,
 					type: 'INTERFACE_FAILED',
-					message: '添加地点失败',
+					message: '添加房间失败',
 				})
 			}
 		})
@@ -359,9 +343,9 @@ class System extends BaseComponent{
 				})
 				return
 			}
-			const {id, name } = fields; //room id
+			const {_id, name } = fields; //room id
 			try{
-				if (!name || !id) {
+				if (!name || !_id) {
 					throw new Error('字段不能为空')
 				}
 			}catch(err){
@@ -374,20 +358,7 @@ class System extends BaseComponent{
 				return
 			}
 			try{
-        const system = await SystemModel.findOne({'location.room._id':id},'location.room.$')
-        system.location[0].room.forEach(function(item){
-          if(item._id == id) {
-            item.name = name
-          }
-        })
-        await SystemModel.findOneAndUpdate(
-          {'location.room._id':id},
-          {
-            '$set':{
-              "location.$.room":system.location[0].room,
-            }
-          }
-        )
+				await RoomModel.findOneAndUpdate({'_id':_id},{$set:{name:name}})
 				res.send({
 					status: 1,
 					message: '修改成功',
@@ -403,8 +374,8 @@ class System extends BaseComponent{
 		})
 	}
   async deleteRoom(req, res, next){
-    const id = req.params.id
-    if (!id) {
+    const _id = req.params._id
+    if (!_id) {
 			console.log('参数错误');
 			res.send({
 				status: 0,
@@ -414,22 +385,7 @@ class System extends BaseComponent{
 			return
 		}
     try {
-      const system = await SystemModel.findOne({'location.room._id':id},'location.room.$')
-      var temp;
-      system.location[0].room.forEach(function(item,index){
-        if(item._id == id) {
-          temp = index
-        }
-      })
-      system.location[0].room.splice(temp,1)
-      await SystemModel.findOneAndUpdate(
-        {'location.room._id':id},
-        {
-          '$set':{
-            "location.$.room":system.location[0].room,
-          }
-        }
-      )
+      await RoomModel.findOneAndRemove({'_id':_id})
       res.send({
 				status: 1,
 				message: '删除成功'
@@ -454,10 +410,11 @@ class System extends BaseComponent{
 				})
 				return
 			}
-			const {id,name}  = fields; // room id
+			const {_id,name,sensor,ip,transfer_type}  = fields; // room id
+			console.log(_id,name,sensor,ip,transfer_type)
 			try{
-				if (!name || !id) {
-					throw new Error('name不能为空')
+				if (!name || !_id || !sensor || !ip || (transfer_type== null) ){
+					throw new Error('不能为空')
 				}
 			}catch(err){
 				console.log(err.message, err);
@@ -469,45 +426,67 @@ class System extends BaseComponent{
 				return
 			}
 			try{
-				const system = await SystemModel.findOne({"location.room._id": id},'location.$')
-				if (!system) {
-					console.log('系统不存在');
+				const room = await RoomModel.findOne({"_id": _id})
+				if (!room) {
+					console.log('房间不存在');
 					res.send({
 						status: 0,
-						type: 'SYSTEM_NOT_EXIST',
-						message: '该系统不存在',
+						type: 'LOCATION_NOT_EXIST',
+						message: '该房间不存在',
 					})
 				}else{
-          console.log(system.location[0].room)
-					const newDevice = {
-            name: name,
-						create_time: dtime().format('YYYY-MM-DD'),
+					var sensorArray = []
+					for(var i=0;i<sensor.length;i++){
+						for(var j=0;j<sensor[i].alarm.alarmEnum.length;j++){
+							delete sensor[i].alarm.alarmEnum[j]._id
+						}
+						var newSensor = {
+							transfer_type: transfer_type,
+							point:sensor[i].point,
+							create_time:dtime().format('YYYY-MM-DD'),
+							ip:ip,
+							zhan:sensor[i].zhan,
+							isStart:false,
+						}
+						if(sensor[i].alarm._id){
+							newSensor.alarm = sensor[i].alarm._id
+						}else {
+							var newAlarm = {
+								alarmEnum:sensor[i].alarm.alarmEnum,
+								create_time:dtime().format('YYYY-MM-DD'),
+							}
+							var alarmResult = await AlarmModel.create(newAlarm)
+							newSensor.alarm = alarmResult._id
+						}
+						sensorArray.push(newSensor)
 					}
-          system.location[0].room.forEach(function(item){
-            if(item._id == id) {
-              item.device = item.device.concat(newDevice)
-            }
-          })
-          console.log(system.location[0].room)
-          await SystemModel.findOneAndUpdate(
-            {'location.room._id':id},
-            {
-              '$set':{
-                "location.$.room":system.location[0].room,
-              }
-            }
-          )
+					var sensorResult = await SensorModel.create(sensorArray)
+ 
+					var sensorTemp = []
+					sensorResult.forEach(function(item){
+						sensorTemp.push(item._id)
+					})
+
+					const newDevice = {
+            			name: name,
+						create_time: dtime().format('YYYY-MM-DD'),
+            			sensor: sensorTemp,
+					}
+
+					var result = await DeviceModel.create(newDevice)
+          			room.device = room.device.concat(result._id)
+          			await room.save()
 					res.send({
 						status: 1,
 						message: '添加成功',
 					})
 				}
 			}catch(err){
-				console.log('添加地点失败', err);
+				console.log('添加房间失败', err);
 				res.send({
 					status: 0,
 					type: 'INTERFACE_FAILED',
-					message: '添加地点失败',
+					message: '添加房间失败',
 				})
 			}
 		})
@@ -523,9 +502,9 @@ class System extends BaseComponent{
 				})
 				return
 			}
-			const {id, name } = fields; //device id
+			const {_id, name,sensor,ip,transfer_type } = fields; //device id
 			try{
-				if (!name || !id) {
+				if (!name || !_id || !sensor || !ip || (transfer_type == null)) {
 					throw new Error('字段不能为空')
 				}
 			}catch(err){
@@ -538,22 +517,45 @@ class System extends BaseComponent{
 				return
 			}
 			try{
-        const system = await SystemModel.findOne({'location.room.device._id':id},'location.room.device.$')
-        system.location[0].room.forEach(function(item){
-          item.device.forEach(function(item2){
-            if(item2._id == id) {
-              item2.name = name
-            }
-          })
-        })
-        await SystemModel.findOneAndUpdate(
-          {'location.room.device._id':id},
-          {
-            '$set':{
-              "location.$.room":system.location[0].room,
-            }
-          }
-        )
+				var sensorArray = []
+				for(var i=0;i<sensor.length;i++){
+					var newSensor = {
+						transfer_type: transfer_type,
+						point:sensor[i].point,
+						ip:ip,
+						zhan:sensor[i].zhan,
+					}
+					var p ;
+					for(var j=0;j<sensor[i].alarm.alarmEnum.length;j++){
+						delete sensor[i].alarm.alarmEnum[j]._id
+					}
+
+					if(sensor[i].alarm._id){
+						newSensor.alarm = sensor[i].alarm._id
+					}else {
+						var newAlarm = {
+							alarmEnum:sensor[i].alarm.alarmEnum,
+							create_time:dtime().format('YYYY-MM-DD'),
+						}
+						var alarmResult = await AlarmModel.create(newAlarm)
+						newSensor.alarm = alarmResult._id
+					}
+					if(sensor[i]._id){
+						newSensor.create_time = sensor[i].create_time,
+						p = await SensorModel.findOneAndUpdate({'_id':sensor[i]._id},newSensor)
+					} else {
+						p = await SensorModel.create(newSensor)
+					}
+					console.log(p)
+					sensorArray.push(p)
+				}
+				console.log(sensorArray)
+				var sensorTemp = []
+				sensorArray.forEach(function(item){
+						sensorTemp.push(item._id)
+				})
+				
+        		await DeviceModel.findOneAndUpdate({'_id':_id},{$set:{name:name,sensor:sensorTemp}})
 				res.send({
 					status: 1,
 					message: '修改成功',
@@ -569,8 +571,8 @@ class System extends BaseComponent{
 		})
 	}
   async deleteDevice(req, res, next){
-    const id = req.params.id
-    if (!id) {
+    const _id = req.params._id
+    if (!_id) {
 			console.log('参数错误');
 			res.send({
 				status: 0,
@@ -580,27 +582,7 @@ class System extends BaseComponent{
 			return
 		}
     try {
-      const system = await SystemModel.findOne({'location.room.device._id':id},'location.room.device.$')
-      var temp = -1;
-      system.location[0].room.forEach(function(item){
-        item.device.forEach(function(item2,index){
-          //_id 是object类型，要记得转换
-          if(item2._id == id) {
-            temp = index
-          }
-        })
-        if(temp != -1){
-          item.device.splice(temp,1)
-        }
-      })
-      await SystemModel.findOneAndUpdate(
-        {'location.room.device._id':id},
-        {
-          '$set':{
-            "location.$.room":system.location[0].room,
-          }
-        }
-      )
+      await DeviceModel.findOneAndRemove({'_id':_id})
       res.send({
 				status: 1,
 				message: '删除成功'

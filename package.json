@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "author": "cangdu <1264889788@qq.com>",
+  "author": "chengyuan <395750080@qq.com>",
   "license": "GPL",
   "private": true,
   "scripts": {
@@ -19,6 +19,7 @@
     "url": "https://github.com/bailicangdu/node-elm"
   },
   "dependencies": {
+    "axios": "^0.18.0",
     "babel": "^6.23.0",
     "babel-cli": "^6.24.1",
     "babel-core": "^6.24.0",
@@ -47,6 +48,7 @@
     "pinyin": "^2.8.3",
     "pm2": "^2.8.0",
     "qiniu": "^6.1.13",
+    "request": "^2.87.0",
     "sha1": "^1.1.1",
     "supervisor": "^0.12.0",
     "time-formater": "^1.0.1",
