@@ -5,6 +5,7 @@ import SensorModel from '../../models/system/sensor'
 import DeviceModel from '../../models/system/device'
 import BaseComponent from '../../prototype/baseComponent'
 import config from 'config-lite'
+import formidable from 'formidable'
 import axios from 'axios'
 // import request from 'request'
 
@@ -33,9 +34,23 @@ class Data extends BaseComponent{
                 })
                 return
             }
+            const data = fields; //device id
+			try{
+				if (!data) {
+					throw new Error('字段不能为空')
+				}
+			}catch(err){
+				console.log(err.message, err);
+				res.send({
+					status: 0,
+					type: 'GET_ERROR_PARAM',
+					message: err.message,
+				})
+				return
+			}
             try {
-               
-                console.log(device)
+                SensorModel.findOneAndUpdate({'_id':_id},{$set:{}})
+                console.log(fields)
                 
                 
                 
@@ -68,9 +83,7 @@ class Data extends BaseComponent{
             if(device.sensor[0].isStart == false) {
                 console.log(config.data_ip+config.api.start)
                 var p = await axios.post(config.data_ip+config.api.start,device)
-                console.log(p)
                 if(p.data.status ==1) {
-                    
                     await SensorModel.findOneAndUpdate({'_id':device.sensor[0]._id},{$set:{isStart:true}})
                     res.send({
                         status: 1,
@@ -84,9 +97,7 @@ class Data extends BaseComponent{
                 }
                 
             }else {
-               
                 var p = await axios.post(config.data_ip+config.api.stop,device)
-                console.log(p)
                 if(p.data.status ==1) {
                     await SensorModel.findOneAndUpdate({'_id':device.sensor[0]._id},{$set:{isStart:false}})
                     res.send({
@@ -100,7 +111,6 @@ class Data extends BaseComponent{
                     })
                 }
             }
-            
         }catch(err){
 			console.log('关闭失败', err);
 			res.send({
