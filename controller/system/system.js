@@ -447,6 +447,10 @@ class System extends BaseComponent{
 							ip:ip,
 							zhan:sensor[i].zhan,
 							isStart:false,
+							data:null,
+							oldData:[],
+							alarmData:null,
+							oldAlarmData:null,
 						}
 						if(sensor[i].alarm._id){
 							newSensor.alarm = sensor[i].alarm._id

@@ -11,6 +11,10 @@ const dataAlarmSchema = new Schema({
   create_time:String,
   stop_time:String,
   data:String,
+  info:String,
+  worker:{type:Schema.Types.ObjectId,ref:'User'},
+  worker_time:String,
+  finish_time:String,
 })
 const sensorSchema = new Schema({
   transfer_type: Number, // modbus s7
