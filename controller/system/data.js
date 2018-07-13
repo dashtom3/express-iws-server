@@ -15,6 +15,7 @@ import { stringify } from 'querystring';
 class Data extends BaseComponent{
 	constructor(){
         super()
+        this.tcpCollectData = {}
         this.collectData = this.collectData.bind(this)
     }
 
@@ -39,7 +40,8 @@ class Data extends BaseComponent{
 				})
 				return
 			}
-            const data = fields; //device id
+            const data = fields.data; //device id
+            //console.log(data)
 			try{
 				if (!data) {
 					throw new Error('字段不能为空')
@@ -61,7 +63,16 @@ class Data extends BaseComponent{
 // 4 开启1 关闭0
 // 5 是1 否0
             try {
-                var sensor = await SensorModel.findOne({'_id':_id},'-oldData -oldAlarmData').populate('point').populate('alarm')
+                var sensor;
+                if(this.tcpCollectData[_id]){
+                    sensor =  this.tcpCollectData[_id] 
+                }else {
+                    sensor = await SensorModel.findOne({'_id':_id},'-oldData -oldAlarmData').populate('point').populate('alarm')
+                    this.tcpCollectData[_id] = sensor
+                    console.log(sensor)
+                }
+                
+                
                 if(!sensor){
                     return 
                 }
@@ -72,25 +83,27 @@ class Data extends BaseComponent{
                     var alarm = false
                     var alarmContent = ""
                     var allData = data.split(",")
-                    sensor.alarm.alarmEnum.foreach((item,index)=>{
+                    sensor.alarm.alarmEnum.forEach((item,index)=>{
+                         
                         if(item.isAlarm == true){
-                            // var data = 
-                            var num = sensor.point.pointEnum[index].place-addressStart
+                            var num = parseInt(sensor.point.pointEnum[index].place)-addressStart
                             switch (sensor.point.pointEnum[index].type) {
                                 case 0:
                                     var temp = ""
                                     for(var i=0;i<sensor.point.pointEnum[index].placeLength;i++){
-                                        temp = temp+allData[num+i].toString(2)
+                                        temp = temp+(Array(8).join('0') + (parseInt(allData[num+i])).toString(2)).slice(-8);
                                     }
-                                    var data = parseInt(temp,2)*sensor.point.pointEnum[index].times
-                                    if(!(data>=item.low && data<=item.high)){
+                                    //console.log(sensor.point.pointEnum[index].name,allData[num-1],allData[num])
+                                    var datatemp = parseInt(temp,2)*sensor.point.pointEnum[index].times
+                                    //console.log(datatemp)
+                                    if(!(datatemp>=item.low && datatemp<=item.high)){
                                         alarm = true
-                                        alarmContent = alarmContent+sensor.point.pointEnum[index].name+",实际值:"+data+"超出上下限("+item.low+","+item.high+");"
+                                        alarmContent = alarmContent+sensor.point.pointEnum[index].name+",实际值:"+datatemp+"超出上下限("+item.low+","+item.high+");"
                                     }
                                     break;
                                 case 1:
-                                    var data = allData[num]
-                                    switch (data) {
+                                    var datatemp = allData[num]
+                                    switch (datatemp) {
                                         case 36:
                                             alarm = true
                                             alarmContent = alarmContent+sensor.point.pointEnum[index].name+',热继故障;'
@@ -108,8 +121,8 @@ class Data extends BaseComponent{
                                     }
                                     break;
                                 case 2:
-                                    var data = allData[num]
-                                    switch (data) {
+                                    var datatemp = allData[num]
+                                    switch (datatemp) {
                                         case 1:
                                             alarm = true
                                             alarmContent = alarmContent+sensor.point.pointEnum[index].name+',无水故障;'
@@ -138,37 +151,33 @@ class Data extends BaseComponent{
                                             break;
                                     }
                                     break;
-                                case 3,4,5:
-                                    var temp = num.split('.')
-                                    var data = allData[temp[0]]
-                                    console.log(data)
-                                    if(temp.length>1){
-                                        //1800.1这种
-                                        data = (Array(8).join('0') + data).slice(-8); 
-                                        console.log(data)
-                                        var data2 = data.charAt(8-parseInt(temp[1])-1)
-                                        if(data2 == '1'){
-                                            alarm = true
-                                            alarmContent = alarmContent+sensor.point.pointEnum[index].name+',是;'
-                                        }
-                                    }else {
-                                        // 1800.0这种  .0会被省去
-                                        data = (Array(8).join('0') + data).slice(-8); 
-                                        console.log(data)
-                                        var data2 = data.charAt(7)
-                                        if(data2 == '1'){
-                                            alarm = true
-                                            alarmContent = alarmContent+sensor.point.pointEnum[index].name+',是;'
-                                        }
+                                case 3:
+                                case 4:
+                                case 5:
+                                    var temp = sensor.point.pointEnum[index].place.toString().split('.')
+                                    var datatemp = allData[num]
+                                    
+                                    datatemp = (Array(8).join('0') + (parseInt(datatemp)).toString(2)).slice(-8);
+                                    //console.log(datatemp)
+                                    var data2 = temp.length>1 ? datatemp.charAt(8-parseInt(temp[1])-1):datatemp.charAt(7) //1800.0 没有.0
+                                    //console.log(data2)
+                                    if(data2 == '1'){
+                                        alarm = true
+                                        alarmContent = alarmContent+sensor.point.pointEnum[index].name+',是;'
                                     }
+                                    
                                     break;
                                 default:
                                     break;
                             }
                         }
+                        // console.log(index)
                     })
+                    
+                    //console.log(alarmContent)
                     //该条报警
                     if(alarm == true) {
+                        
                         if(sensor.alarmData != null) {
                             sensor.alarmData.info = alarmContent
                             sensor.alarmData.data = data
@@ -187,10 +196,14 @@ class Data extends BaseComponent{
                         }
                     }else {
                     //数据不报警
+                   
                         if(sensor.alarmData != null) {
                             sensor.alarmData.stop_time = dtime().format('YYYY-MM-DD HH:mm:ss')
                             var temp = JSON.parse(JSON.stringify(sensor.alarmData))
                             await SensorModel.findOneAndUpdate({'_id':sensor._id},{$set:{data:newData,alarmData:null},$push:{oldData:newData,oldAlarmData:temp}})
+                        }else {
+                            await SensorModel.findOneAndUpdate({'_id':sensor._id},{$set:{data:newData},$push:{oldData:newData}})
+                        
                         }
                     }
                 }
@@ -219,11 +232,10 @@ class Data extends BaseComponent{
                 return
             }
         try {
-            const device = await DeviceModel.findOne({'_id':_id}).populate({path:'sensor',populate:[{path:'point'},{path:'alarm'}]})
-            console.log(device)
+            const device = await DeviceModel.findOne({'_id':_id}).populate({path:'sensor',select:'-data -oldData -oldAlarmData',populate:[{path:'point'},{path:'alarm'}]})
+            console.log('开关设备',device)
             
             if(device.sensor[0].isStart == false) {
-                console.log(config.data_ip+config.api.start)
                 var p = await axios.post(config.data_ip+config.api.start,device)
                 if(p.data.status ==1) {
                     await SensorModel.findOneAndUpdate({'_id':device.sensor[0]._id},{$set:{isStart:true}})

@@ -14,7 +14,7 @@ import Sensor from '../../models/system/sensor';
 
 class System extends BaseComponent{
 	constructor(){
-		super()
+		super() 
 	}
 	async addSystem(req, res, next){
 		const form = new formidable.IncomingForm();
@@ -133,7 +133,7 @@ class System extends BaseComponent{
   async getAllSystem(req, res, next){
     try{
 			// const allSystem = await SystemModel.find({}, '-__v -location.room.device')
-      const allSystem = await SystemModel.find({}, '-__v').populate({path:'location',populate:{path:'room',populate:{path:'device',populate:{path:"sensor",populate:[{path:'point'},{path:'alarm'}]}}}})
+      const allSystem = await SystemModel.find({}, '-__v').populate({path:'location',populate:{path:'room',populate:{path:'device',populate:{path:"sensor",select:'-data -oldData -alarmData -oldAlarmData',populate:[{path:'point'},{path:'alarm'}]}}}})
 			res.send({
 				status: 1,
 				data: {data:allSystem}
@@ -450,7 +450,7 @@ class System extends BaseComponent{
 							data:null,
 							oldData:[],
 							alarmData:null,
-							oldAlarmData:null,
+							oldAlarmData:[],
 						}
 						if(sensor[i].alarm._id){
 							newSensor.alarm = sensor[i].alarm._id
