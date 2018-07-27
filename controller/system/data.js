@@ -2,6 +2,7 @@
 
 import PointModel from '../../models/system/point'
 import SensorModel from '../../models/system/sensor'
+import DataModel from '../../models/system/data'
 import UserModel from '../../models/user/user'
 import DeviceModel from '../../models/system/device'
 import RoomModel from '../../models/system/room'
@@ -23,7 +24,7 @@ class Data extends BaseComponent{
 
     async getHistoryData(req, res, next){
         const _id = req.params._id    //sensor id
-        const {pageSize	= 30, pageNum = 1,fromDate=new Date().getTime()-1000*60*60*24*7,toDate=new Date().getTime()} = req.query;
+        const {pageSize	= 30, pageNum = 1,fromDate=new Date().getTime()-1000*60*60*24,toDate=new Date().getTime()} = req.query;
         if (!_id) {
                 console.log('参数错误');
                 res.send({
@@ -36,40 +37,50 @@ class Data extends BaseComponent{
         try {
             // SensorModel.findOne({'_id':_id},'-oldAlarmData -data -alarmData').sort({'_id':-1}).skip(Number(pageSize*(pageNum-1))).limit(Number(pageSize))
             // console.log(new Date(fromDate))
-            const sensor = await SensorModel.aggregate(
-                {$match:{'_id':mongoose.Types.ObjectId(_id)}},
-                {$unwind:'$oldData'},
-                {$match:{'oldData.create_time': { $gte : dtime(fromDate).format('YYYY-MM-DD HH:mm:ss'), $lte : dtime(toDate).format('YYYY-MM-DD HH:mm:ss') } }},
-                {$sort:{'oldData.create_time':-1}},
-                {$skip:Number(pageSize*(pageNum-1))},
-                {$limit:Number(pageSize)},
-                {$group:{_id:"$_id",oldData:{$push:"$oldData"}}})
-            const sensorPoint = await SensorModel.findOne({'_id':_id},'-oldAlarmData -data -alarmData -oldData').populate('point')
-            // console.log(sensor[0].oldData)
-            // console.log(sensorPoint)
-            if(sensor.length > 0){
-                const total = await SensorModel.aggregate(
-                    {$match:{_id:mongoose.Types.ObjectId(_id)}},
-                    {$unwind:'$oldData'},
-                    {$match:{'oldData.create_time': { $gte : dtime(fromDate).format('YYYY-MM-DD HH:mm:ss'), $lte : dtime(toDate).format('YYYY-MM-DD HH:mm:ss') } }},
-                    {$group:{_id:"$_id",totalNum:{$sum:1}}})
-                // const sensor = await SensorModel.aggregate({$match:{_id:mongoose.Types.ObjectId(_id)}}).unwind('oldData').sort({'oldData.create_time':-1}).skip(Number(pageSize*(pageNum-1))).limit(Number(pageSize)).group({_id:"$_id",oldData:{$push:"$oldData"}})
-                // console.log(sensor)
-                sensor[0].point = sensorPoint.point
-                const result = this.analyseData(sensor[0].oldData,sensorPoint.transfer_type,sensorPoint.point)
-                // console.log(result)
-                res.send({
-                    status: 1,
-                    data: {data:{point:sensorPoint.point,data:result},page:{pageNum:parseInt(pageNum),pageSize:parseInt(pageSize),totalPage:parseInt((total[0].totalNum-1)/pageSize+1)}}
-                })
-            }else {
-                // console.log(sensor)
-                res.send({
-                    status: 1,
-                    data: {data:{point:sensorPoint.point},page:{pageNum:parseInt(pageNum),pageSize:parseInt(pageSize),totalPage:0}}
-                })
-            }
-            
+            // const sensor = await SensorModel.aggregate(
+            //     {$match:{'_id':mongoose.Types.ObjectId(_id)}},
+            //     {$unwind:'$oldData'},
+            //     {$match:{'oldData.create_time': { $gte : dtime(fromDate).format('YYYY-MM-DD HH:mm:ss'), $lte : dtime(toDate).format('YYYY-MM-DD HH:mm:ss') } }},
+            //     {$sort:{'oldData.create_time':-1}},
+            //     {$skip:Number(pageSize*(pageNum-1))},
+            //     {$limit:Number(pageSize)},
+            //     {$group:{_id:"$_id",oldData:{$push:"$oldData"}}})
+            // const sensorPoint = await SensorModel.findOne({'_id':_id},'-oldAlarmData -data -alarmData -oldData').populate('point')
+            // // console.log(sensor[0].oldData)
+            // // console.log(sensorPoint)
+            // if(sensor.length > 0){
+            //     const total = await SensorModel.aggregate(
+            //         {$match:{_id:mongoose.Types.ObjectId(_id)}},
+            //         {$unwind:'$oldData'},
+            //         {$match:{'oldData.create_time': { $gte : dtime(fromDate).format('YYYY-MM-DD HH:mm:ss'), $lte : dtime(toDate).format('YYYY-MM-DD HH:mm:ss') } }},
+            //         {$group:{_id:"$_id",totalNum:{$sum:1}}})
+            //     // const sensor = await SensorModel.aggregate({$match:{_id:mongoose.Types.ObjectId(_id)}}).unwind('oldData').sort({'oldData.create_time':-1}).skip(Number(pageSize*(pageNum-1))).limit(Number(pageSize)).group({_id:"$_id",oldData:{$push:"$oldData"}})
+            //     // console.log(sensor)
+            //     sensor[0].point = sensorPoint.point
+            //     const result = this.analyseData(sensor[0].oldData,sensorPoint.transfer_type,sensorPoint.point)
+            //     // console.log(result)
+            //     res.send({
+            //         status: 1,
+            //         data: {data:{point:sensorPoint.point,data:result},page:{pageNum:parseInt(pageNum),pageSize:parseInt(pageSize),totalPage:parseInt((total[0].totalNum-1)/pageSize+1)}}
+            //     })
+            // }else {
+            //     // console.log(sensor)
+            //     res.send({
+            //         status: 1,
+            //         data: {data:{point:sensorPoint.point},page:{pageNum:parseInt(pageNum),pageSize:parseInt(pageSize),totalPage:0}}
+            //     })
+            // }
+            var sensor = await DataModel.find({'sensor':_id,create_time:{ $gte : dtime(fromDate).format('YYYY-MM-DD HH:mm:ss'), $lte : dtime(toDate).format('YYYY-MM-DD HH:mm:ss') }}).skip(Number(pageSize*(pageNum-1))).limit(Number(pageSize)).populate({path:'sensor',select:'-data -oldData -alarmData -oldAlarmData',populate:{path:"point"}})
+            const result = this.analyseData(sensor,sensor.transfer_type,sensor.point)
+            var totalPage;
+			await DataModel.find({'sensor':_id,create_time:{ $gte : dtime(fromDate).format('YYYY-MM-DD HH:mm:ss'), $lte : dtime(toDate).format('YYYY-MM-DD HH:mm:ss') }},function(err, user){
+				totalPage = parseInt((user.length-1)/pageSize+1)
+            })
+            console.log(result)
+            res.send({
+                status: 1,
+                data: {data:{point:sensor.point,data:result},page:{pageNum:parseInt(pageNum),pageSize:parseInt(pageSize),totalPage:parseInt((total[0].totalNum-1)/pageSize+1)}}
+            })
         }catch(err){
 			console.log('读取失败', err);
 			res.send({
@@ -91,7 +102,7 @@ class Data extends BaseComponent{
             return
         }
         try {
-            const room = await RoomModel.findOne({'_id':_id}).populate({path:'device',populate:{path:"sensor",select:'-oldData -alarmData -oldAlarmData',populate:[{path:'point'},{path:'alarm'}]}})
+            const room = await RoomModel.findOne({'_id':_id}).populate({path:'device',populate:{path:"sensor",select:'-alarmData -oldAlarmData',populate:[{path:'point'},{path:'alarm'}]}})
             if(!room){
                 res.send({
                     status: 0,

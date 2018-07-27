@@ -25,7 +25,6 @@ const sensorSchema = new Schema({
   alarm: { type:Schema.Types.ObjectId, ref: 'Alarm'},
   isStart:Boolean,
   data:dataSchema,
-  oldData:[dataSchema],
   alarmData:dataAlarmSchema,
   oldAlarmData:[dataAlarmSchema],
 })
