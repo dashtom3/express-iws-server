@@ -17,6 +17,190 @@ export default class BaseComponent {
 		this.uploadImg = this.uploadImg.bind(this)
 		this.qiniu = this.qiniu.bind(this)
 	}
+	analyseData(data,transfer_type,point){
+		var returnData = []
+		// console.log(data)
+		data.forEach((item,index2)=>{
+			var allData = item.data.split(',')
+			var itemData = []
+			if(transfer_type == 1) { // TCP
+				var addressStart = point.pointEnum[0].place
+				point.pointEnum.forEach((pointEach,index)=>{
+					var tempItem = []
+					var num = parseInt(point.pointEnum[index].place)-addressStart
+
+					switch (point.pointEnum[index].type) {
+						case 0:		// 0 实际值*倍数
+							var temp = ""
+							for(var i=0;i<point.pointEnum[index].placeLength;i++){
+								temp = temp+(Array(8).join('0') + (parseInt(allData[num+i])).toString(2)).slice(-8);
+							}
+							//console.log(point.pointEnum[index].name,allData[num-1],allData[num])
+							var datatemp = parseInt(temp,2)/point.pointEnum[index].times
+							tempItem = [point.pointEnum[index].name,datatemp+point.pointEnum[index].unit]
+							break;
+						case 1: // 1 变频9 工频17 休息2 热继故障36 空开跳闸68 变频故障132
+							var datatemp = allData[num]
+							switch (parseInt(datatemp)) {
+								case 2:
+									tempItem = [point.pointEnum[index].name,"休息"]
+									break;
+								case 9:
+									tempItem = [point.pointEnum[index].name,"变频"]
+									break;
+								case 17:
+									tempItem = [point.pointEnum[index].name,"工频"]
+									break;
+								case 36:
+									tempItem = [point.pointEnum[index].name,"热继故障"]
+									break;
+								case 68:
+									tempItem = [point.pointEnum[index].name,"空开跳闸"]
+									break;
+								case 132:
+									tempItem = [point.pointEnum[index].name,"变频故障"]
+									break;
+								default:
+									tempItem = [point.pointEnum[index].name,"无法识别"]
+									break;
+							}
+							break;	
+						case 2: 	// 2 无水故障 1 高水信号2 地面积水信号4 相序故障8 出口超压16 门禁报警32
+							var datatemp = allData[num]
+							switch (parseInt(datatemp)) {
+								case 1:
+									tempItem = [point.pointEnum[index].name,"无水故障"]
+									break;
+								case 2:
+									tempItem = [point.pointEnum[index].name,"高水信号"]
+									break;
+								case 4:
+									tempItem = [point.pointEnum[index].name,"地面积水信号"]
+									break;
+								case 8:
+									tempItem = [point.pointEnum[index].name,"相序故障"]
+									break;
+								case 16:
+									tempItem = [point.pointEnum[index].name,"出口超压"]
+									break;
+								case 32:
+									tempItem = [point.pointEnum[index].name,"门禁报警"]
+									break;
+								default:
+									tempItem = [point.pointEnum[index].name,"无法识别"]
+									break;
+							}
+							break;
+						case 3: 	// 3 自动0 手动1 // 4 开启1 关闭0 // 5 是1 否0
+							var temp = point.pointEnum[index].place.toString().split('.')
+							var datatemp = allData[num]
+							datatemp = (Array(8).join('0') + (parseInt(datatemp)).toString(2)).slice(-8);
+							var data2 = temp.length>1 ? datatemp.charAt(8-parseInt(temp[1])-1):datatemp.charAt(7) //1800.0 没有.0
+							tempItem = [point.pointEnum[index].name,data2 =="1" ? '手动':'自动']
+							break;
+						case 4:
+							var temp = point.pointEnum[index].place.toString().split('.')
+							var datatemp = allData[num]
+							datatemp = (Array(8).join('0') + (parseInt(datatemp)).toString(2)).slice(-8);
+							var data2 = temp.length>1 ? datatemp.charAt(8-parseInt(temp[1])-1):datatemp.charAt(7) //1800.0 没有.0
+							tempItem = [point.pointEnum[index].name,data2 =="1" ? '开启':'关闭']
+							break;
+						case 5:
+							var temp = point.pointEnum[index].place.toString().split('.')
+							var datatemp = allData[num]
+							datatemp = (Array(8).join('0') + (parseInt(datatemp)).toString(2)).slice(-8);
+							var data2 = temp.length>1 ? datatemp.charAt(8-parseInt(temp[1])-1):datatemp.charAt(7) //1800.0 没有.0
+							tempItem = [point.pointEnum[index].name,data2 =="1" ? '是':'否']
+							break;
+						default:
+							break;
+					}
+					itemData.push(tempItem[1])						
+				})
+			}else {
+				point.pointEnum.forEach((item2,index)=>{
+					var tempItem = []
+					switch (point.pointEnum[index].type) {
+						case 0:
+							var datatemp = parseInt(allData[index])/point.pointEnum[index].times
+							tempItem = [point.pointEnum[index].name,datatemp+point.pointEnum[index].unit]
+							break;
+						case 1:
+							var datatemp = allData[index]
+							console.log(datatemp)
+							switch (parseInt(datatemp)) {
+								case 2:
+									tempItem = [point.pointEnum[index].name,"休息"]
+									break;
+								case 9:
+									tempItem = [point.pointEnum[index].name,"变频"]
+									break;
+								case 17:
+									tempItem = [point.pointEnum[index].name,"工频"]
+									break;
+								case 36:
+									tempItem = [point.pointEnum[index].name,"热继故障"]
+									break;
+								case 68:
+									tempItem = [point.pointEnum[index].name,"空开跳闸"]
+									break;
+								case 132:
+									tempItem = [point.pointEnum[index].name,"变频故障"]
+									break;
+								default:
+									tempItem = [point.pointEnum[index].name,"无"]
+									break;
+							}
+							break;	
+						case 2:
+							var datatemp = allData[index]
+							switch (parseInt(datatemp)) {
+								case 1:
+									tempItem = [point.pointEnum[index].name,"无水故障"]
+									break;
+								case 2:
+									tempItem = [point.pointEnum[index].name,"高水信号"]
+									break;
+								case 4:
+									tempItem = [point.pointEnum[index].name,"地面积水信号"]
+									break;
+								case 8:
+									tempItem = [point.pointEnum[index].name,"相序故障"]
+									break;
+								case 16:
+									tempItem = [point.pointEnum[index].name,"出口超压"]
+									break;
+								case 32:
+									tempItem = [point.pointEnum[index].name,"门禁报警"]
+									break;
+								default:
+									tempItem = [point.pointEnum[index].name,"无"]
+									break;
+							}
+							break;
+						case 3:
+							var datatemp = allData[index]
+							tempItem = [point.pointEnum[index].name,datatemp =="1" ? '手动':'自动']
+							break;
+						case 4:
+							var datatemp = allData[index]
+							tempItem = [point.pointEnum[index].name,datatemp =="1" ? '开启':'关闭']
+							break;
+						case 5:
+							var datatemp = allData[index]
+							tempItem = [point.pointEnum[index].name,datatemp =="1" ? '是':'否']
+							break;
+						default:
+							break;
+						}
+					itemData.push(tempItem[1])	
+				})
+			}
+			returnData.push({create_time:item.create_time,data:itemData})
+		})
+		// console.log(returnData)
+		return returnData
+	}
 	async fetch(url = '', data = {}, type = 'GET', resType = 'JSON'){
 		type = type.toUpperCase();
 		resType = resType.toUpperCase();

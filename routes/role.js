@@ -8,7 +8,7 @@ const router = express.Router()
 
 router.post('/add', Role.addRole);
 router.post('/update', Role.updateRole);
-router.post('/delete/:_id', Role.deleteRole)
+router.get('/delete/:_id', Role.deleteRole)
 router.get('/all',Role.getAllRole);
 
 // router.get('/info', User.getUserInfo);

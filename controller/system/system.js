@@ -131,10 +131,16 @@ class System extends BaseComponent{
 		}
   }
   async getAllSystem(req, res, next){
+	const {hasPoint	= 0} = req.query;
     try{
 			// const allSystem = await SystemModel.find({}, '-__v -location.room.device')
-      const allSystem = await SystemModel.find({}, '-__v').populate({path:'location',populate:{path:'room',populate:{path:'device',populate:{path:"sensor",select:'-data -oldData -alarmData -oldAlarmData',populate:[{path:'point'},{path:'alarm'}]}}}})
-			res.send({
+		var allSystem;
+		if(hasPoint == 1){
+			allSystem = await SystemModel.find({}, '-__v').populate({path:'location',populate:{path:'room',populate:{path:'device',populate:{path:"sensor",select:'-data -oldData -alarmData -oldAlarmData',populate:[{path:'point'},{path:'alarm'}]}}}})
+		}else {
+			allSystem = await SystemModel.find({}, '-__v').populate({path:'location',populate:{path:'room',populate:{path:'device',populate:{path:"sensor",select:'-data -oldData -alarmData -oldAlarmData'}}}})
+		}
+      		res.send({
 				status: 1,
 				data: {data:allSystem}
 			})

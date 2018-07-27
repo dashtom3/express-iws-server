@@ -10,6 +10,7 @@ const roleSchema = new Schema({
 	create_time: String,
   type: {type:Number,default: 0,isRequired: true},      // 0 普通  1 管理员
 	name: String,
+	isWrite:Number, // 0 读 1 写
   location: [{ type: Schema.Types.ObjectId, ref: 'Location' }]
   // TODO: 所有地点的id
 })

@@ -14,6 +14,7 @@ class User extends BaseComponent{
 		this.register = this.register.bind(this)
 		this.encryption = this.encryption.bind(this)
 		this.TokenAdd = this.TokenAdd.bind(this)
+		this.changePassword = this.changePassword.bind(this)
 	}
 	async login(req, res, next){
 		const form = new formidable.IncomingForm();
@@ -44,12 +45,12 @@ class User extends BaseComponent{
 			}
 			const newpassword = this.encryption(password);
 			try{
-				var user = await UserModel.findOne({username})
+				var user = await UserModel.findOne({username}).populate('role')
 				if (!user) {
 					res.send({
 						status: 0,
 						type: 'ERROR_PASSWORD',
-						success: '账号或密码错误',
+						message: '账号或密码错误',
 					})
 				}else if(newpassword.toString() != user.password.toString()){
 					console.log('管理员登录密码错误');
@@ -91,12 +92,10 @@ class User extends BaseComponent{
 				})
 				return
 			}
-			const {username, password} = fields;
+			const {username, password,realName,phone,address} = fields;
 			try{
-				if (!username) {
-					throw new Error('用户名错误')
-				}else if(!password){
-					throw new Error('密码错误')
+				if (!username || !password || !realName || !phone || !address) {
+					throw new Error('注册失败')
 				}
 			}catch(err){
 				console.log(err.message, err);
@@ -124,8 +123,10 @@ class User extends BaseComponent{
 						password: newpassword,
 						create_time: dtime().format('YYYY-MM-DD'),
 						role:role._id ,
-						realName: '',
-						address: '',
+						realName: realName,
+						address: address,
+						phone: phone,
+						video:[],
 						token:this.TokenAdd(username,password)
 					}
 					await UserModel.create(newUser)
@@ -152,7 +153,7 @@ class User extends BaseComponent{
 	}
 	Md5(password){
 		const md5 = crypto.createHash('md5');
-		return md5.update(password).digest('base64');
+		return md5.update(password).digest('hex');
 	}
 	TokenAdd(username,password){
 		return this.Md5(username+password);
@@ -163,9 +164,9 @@ class User extends BaseComponent{
 		try{
 			var totalPage;
 			await UserModel.find(function(err, user){
-				totalPage = (user.length-1)/pageSize+1
+				totalPage = parseInt((user.length-1)/pageSize+1)
 			})
-			const allUser = await UserModel.find({}, '-__v -password').skip(Number(pageSize*(pageNum-1))).limit(Number(pageSize)).populate('role')
+			const allUser = await UserModel.find({}, '-__v -password -video').skip(Number(pageSize*(pageNum-1))).limit(Number(pageSize))
 			res.send({
 				status: 1,
 				data: {data:allUser,page:{pageNum:pageNum,pageSize:pageSize,totalPage:totalPage}}
@@ -179,65 +180,171 @@ class User extends BaseComponent{
 			})
 		}
 	}
-	async getUserInfo(req, res, next){
+	async changePassword(req, res, next){
+		const form = new formidable.IncomingForm();
+		form.parse(req, async (err, fields, files) => {
+			if (err) {
+				res.send({
+					status: 0,
+					type: 'FORM_DATA_ERROR',
+					message: '表单信息错误'
+				})
+				return
+			}
+			const {username, oldpassword , password} = fields;
+			try{
+				if (!username || !oldpassword || !password) {
+					throw new Error('用户名参数错误')
+				}
+			}catch(err){
+				console.log(err.message, err);
+				res.send({
+					status: 0,
+					type: 'GET_ERROR_PARAM',
+					message: err.message,
+				})
+				return
+			}
+			const oldpasswordSecret = this.encryption(oldpassword);
+			try{
+				var user = await UserModel.findOne({username})
+				if (!user) {
+					res.send({
+						status: 0,
+						type: 'ERROR_PASSWORD',
+						success: '账号或密码错误',
+					})
+				}else if(oldpasswordSecret.toString() != user.password.toString()){
+					console.log('登录密码错误');
+					res.send({
+						status: 0,
+						type: 'ERROR_PASSWORD',
+						message: '账号或密码错误',
+					})
+				}else{
+					await UserModel.findOneAndUpdate({'username':username},{$set:{password:this.encryption(password)}})
 
-		// if (!admin_id || !Number(admin_id)) {
-		// 	// console.log('获取管理员信息的session失效');
-		// 	res.send({
-		// 		status: 0,
-		// 		type: 'ERROR_SESSION',
-		// 		message: '获取管理员信息失败'
-		// 	})
-		// 	return
-		// }
-		// try{
-		// 	const info = await AdminModel.findOne({id: admin_id}, '-_id -__v -password');
-		// 	if (!info) {
-		// 		throw new Error('未找到当前管理员')
-		// 	}else{
-		// 		res.send({
-		// 			status: 1,
-		// 			data: info
-		// 		})
-		// 	}
-		// }catch(err){
-		// 	console.log('获取管理员信息失败');
-		// 	res.send({
-		// 		status: 0,
-		// 		type: 'GET_ADMIN_INFO_FAILED',
-		// 		message: '获取管理员信息失败'
-		// 	})
-		// }
+					res.send({
+						status: 1,
+						data: user,
+						success: '登录成功'
+					})
+				}
+			}catch(err){
+				console.log('登录失败', err);
+				res.send({
+					status: 0,
+					type: 'LOGIN_USER_FAILED',
+					message: '登录失败',
+				})
+			}
+		})
+	}
+	async deleteUser(req, res, next){
+		const _id = req.params._id
+		if (!_id) {
+				console.log('参数错误');
+				res.send({
+					status: 0,
+					type: 'ERROR_PARAMS',
+					message: '参数错误',
+				})
+				return
+			}
+		try {
+		  await UserModel.findOneAndRemove({'_id':_id})
+		  res.send({
+					status: 1,
+					message: '删除成功'
+				})
+		}catch(err){
+				console.log('删除失败', err);
+				res.send({
+					status: 0,
+					type: 'ERROR_GET_LIST',
+					message: '删除失败'
+				})
+			}
+	}
+	async updateUserRole(req,res,next){
+		const _id = req.params._id
+		const roleId = req.query.roleId;
+		if (!_id || !roleId) {
+			console.log('参数错误');
+			res.send({
+				status: 0,
+				type: 'ERROR_PARAMS',
+				message: '参数错误',
+			})
+			return
+		}
+		try {
+		await UserModel.findOneAndUpdate({_id:_id},{$set:{role:roleId}})
+		res.send({
+					status: 1,
+					message: '修改成功'
+				})
+		}catch(err){
+			console.log('修改失败', err);
+			res.send({
+				status: 0,
+				type: 'ERROR_INTERFACE',
+				message: '修改失败'
+			})
+		}
 	}
 	async update(req, res, next){
-		// const user_id = req.params.user_id;
-		// if (!user_id || !Number(user_id)) {
-		// 	console.log('user_id参数错误', user_id)
-		// 	res.send({
-		// 		status: 0,
-		// 		type: 'ERROR_USERID',
-		// 		message: 'user_id参数错误',
-		// 	})
-		// 	return
-		// }
-		//
-		// try{
-		// 	const image_path = await this.getPath(req);
-		// 	await AdminModel.findOneAndUpdate({id: admin_id}, {$set: {avatar: image_path}});
-		// 	res.send({
-		// 		status: 1,
-		// 		image_path,
-		// 	})
-		// 	return
-		// }catch(err){
-		// 	console.log('上传图片失败', err);
-		// 	res.send({
-		// 		status: 0,
-		// 		type: 'ERROR_UPLOAD_IMG',
-		// 		message: '上传图片失败'
-		// 	})
-		// 	return
-		// }
+		const _id = req.params._id;
+		if (!_id) {
+			res.send({
+				status: 0,
+				type: 'ERROR_PARAMS',
+				message: '参数错误',
+			})
+			return
+		}
+		const form = new formidable.IncomingForm();
+		form.parse(req, async (err, fields, files) => {
+			if (err) {
+				res.send({
+					status: 0,
+					type: 'FORM_DATA_ERROR',
+					message: '表单信息错误'
+				})
+				return
+			}
+			const {realName,phone,address} = fields;
+			try{
+				if ( !realName || !phone || !address) {
+					throw new Error('注册失败')
+				}
+			}catch(err){
+				console.log(err.message, err);
+				res.send({
+					status: 0,
+					type: 'GET_ERROR_PARAM',
+					message: err.message,
+				})
+				return
+			}
+		
+			try{
+				await UserModel.findOneAndUpdate({_id: _id}, {$set: {address: address,phone:phone,realName:realName}});
+				res.send({
+					status: 1,
+					message: '更新成功',
+				})
+				return
+			}catch(err){
+				console.log('上传图片失败', err);
+				res.send({
+					status: 0,
+					type: 'ERROR_UPLOAD_IMG',
+					message: '上传图片失败'
+				})
+				return
+			}
+		})
 	}
 }
 

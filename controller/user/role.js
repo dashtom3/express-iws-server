@@ -22,10 +22,11 @@ class Role extends BaseComponent{
 				})
 				return
 			}
-			const {name, location_ids} = fields;
+			const {name, location_ids,type,isWrite} = fields;
+			console.log(fields)
 			try{
-				if (!name || !location_ids) {
-					throw new Error('参数错误')
+				if (!name || !location_ids || (type == null) || (isWrite== null)) {
+					throw new Error('字段不能为空')
 				}
 			}catch(err){
 				console.log(err.message, err);
@@ -39,7 +40,9 @@ class Role extends BaseComponent{
 			try{
         const newRole = {
           name,
-          create_time: dtime().format('YYYY-MM-DD'),
+		  create_time: dtime().format('YYYY-MM-DD'),
+		  isWrite:isWrite,
+		  type:type,
           location:location_ids,
         }
         await RoleModel.create(newRole)
@@ -68,10 +71,10 @@ class Role extends BaseComponent{
 				})
 				return
 			}
-			const {_id, name , location_ids} = fields;
+			const {_id, name , location_ids,type ,isWrite} = fields;
 			try{
-				if (!_id || !name || !location_ids) {
-					throw new Error('参数错误')
+				if (!_id || !name || !location_ids || (type == null) || (isWrite == null)) {
+					throw new Error('字段不能为空')
 				}
 			}catch(err){
 				console.log(err.message, err);
@@ -83,7 +86,7 @@ class Role extends BaseComponent{
 				return
 			}
 			try{
-          await SystemModel.findOneAndUpdate({_id:_id},{$set:{name:name,location:location_ids}})
+          await RoleModel.findOneAndUpdate({_id:_id},{$set:{name:name,type:type,isWrite:isWrite,location:location_ids}})
   				res.send({
   					status: 1,
   					message: '更新成功',
@@ -126,12 +129,11 @@ class Role extends BaseComponent{
   }
 	async getAllRole(req, res, next){
 		console.log('获取所有角色')
-		const {pageSize	= 10, pageNum = 1} = req.query;
 		try{
-			const allRole = await RoleModel.find({}, '-__v').sort({_id: -1}).skip(Number(pageSize*(pageNum-1))).limit(Number(pageSize))
+			const allRole = await RoleModel.find({}, '-__v')
 			res.send({
 				status: 1,
-				data: {data:allRole,page:{pageNum:pageNum,pageSize:pageSize}}
+				data: {data:allRole}
 			})
 		}catch(err){
 			console.log('获取列表失败', err);
