@@ -8,6 +8,7 @@ const router = express.Router()
 
 // router.post('/collectData/:_id',Data.collectData)
 router.get('/historyData/:_id', Data.getHistoryData);
+router.get('/exportHistoryData/:_id', Data.exportHistoryData);
 router.get('/realData/:_id',Data.getRealData);
 router.get('/start/:_id', Data.startRead);
 router.get('/realAlarmData',Data.getAlarmRealData);

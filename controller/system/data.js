@@ -10,6 +10,7 @@ import BaseComponent from '../../prototype/baseComponent'
 import config from 'config-lite'
 import axios from 'axios'
 import dtime from 'time-formater'
+import xlsx from 'node-xlsx';
 import Sensor from '../../models/system/sensor';
 import { stringify } from 'querystring';
 import mongoose from 'mongoose'
@@ -81,6 +82,36 @@ class Data extends BaseComponent{
                 status: 1,
                 data: {data:{point:sensor.point,data:result},page:{pageNum:parseInt(pageNum),pageSize:parseInt(pageSize),totalPage:parseInt((total[0].totalNum-1)/pageSize+1)}}
             })
+        }catch(err){
+			console.log('读取失败', err);
+			res.send({
+				status: 0,
+				type: 'ERROR_GET_LIST',
+				message: '读取失败'
+			})
+		}
+    }
+    async exportHistoryData(req, res, next){
+        const _id = req.params._id    //sensor id
+        const {fromDate=new Date().getTime()-1000*60*60*24,toDate=new Date().getTime()} = req.query;
+        if (!_id) {
+                console.log('参数错误');
+                res.send({
+                    status: 0,
+                    type: 'ERROR_PARAMS',
+                    message: '参数错误', 
+                })
+                return
+            }
+        try {
+            var sensor = await DataModel.find({'sensor':_id,create_time:{ $gte : dtime(fromDate).format('YYYY-MM-DD HH:mm:ss'), $lte : dtime(toDate).format('YYYY-MM-DD HH:mm:ss') }}).populate({path:'sensor',select:'-data -oldData -alarmData -oldAlarmData',populate:{path:"point"}})
+            const result = this.analyseData(sensor,sensor.transfer_type,sensor.point)
+            console.log(result)
+            var buffer = xlsx.build([{name: "mySheetName", data: result}]);
+            // res.send({
+            //     status: 1,
+            //     data: {data:{point:sensor.point,data:result},page:{pageNum:parseInt(pageNum),pageSize:parseInt(pageSize),totalPage:parseInt((total[0].totalNum-1)/pageSize+1)}}
+            // })
         }catch(err){
 			console.log('读取失败', err);
 			res.send({

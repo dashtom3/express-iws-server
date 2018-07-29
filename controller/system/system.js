@@ -2,6 +2,7 @@
 
 import SystemModel from '../../models/system/system'
 import LocationModel from '../../models/system/location'
+import UserModel from '../../models/user/user'
 import RoomModel from '../../models/system/room'
 import DeviceModel from '../../models/system/device'
 import SensorModel from '../../models/system/sensor'
@@ -141,6 +142,69 @@ class System extends BaseComponent{
 			allSystem = await SystemModel.find({}, '-__v').populate({path:'location',populate:{path:'room',populate:{path:'device',populate:{path:"sensor",select:'-data -oldData -alarmData -oldAlarmData'}}}})
 		}
       		res.send({
+				status: 1,
+				data: {data:allSystem}
+			})
+		}catch(err){
+			console.log('获取列表失败', err);
+			res.send({
+				status: 0,
+				type: 'ERROR_GET_LIST',
+				message: '获取列表失败'
+			})
+		}
+	}
+	async getAllSystemByRole(req, res, next){
+		const {hasPoint	= 0,token} = req.query;
+		if (!token) {
+			console.log('参数错误');
+			res.send({
+				status: 0,
+				type: 'ERROR_PARAMS',
+				message: '参数错误',
+			})
+			return
+		}
+		try{
+				// const allSystem = await SystemModel.find({}, '-__v -location.room.device')
+			const user = await UserModel.findOne({'token':token}).populate({path:'role',populate:{path:'location'}})
+			if(!user){
+				res.send({
+					status: 0,
+					type: 'ERROR_PARAMS',
+					message: '参数错误',
+				})
+				return
+
+			}
+			// console.log(user)
+			//TODO 去除
+			var allSystem;
+			if(hasPoint == 1){
+				allSystem = await SystemModel.find({}, '-__v').populate({path:'location',populate:{path:'room',populate:{path:'device',populate:{path:"sensor",select:'-data -oldData -alarmData -oldAlarmData',populate:[{path:'point'},{path:'alarm'}]}}}})
+				
+			}else {
+				allSystem = await SystemModel.find({}, '-__v').populate({path:'location',populate:{path:'room',populate:{path:'device',populate:{path:"sensor",select:'-data -oldData -alarmData -oldAlarmData'}}}})
+			}
+			// console.log(allSystem)
+			if(user.role.type != 1){
+				allSystem.forEach(sys=>{
+					var temp = []
+					sys.location.forEach(loc=>{
+						user.role.location.forEach(locSec=>{
+							// console.log(1,loc._id,locSec._id)
+							if(loc._id.toString() === locSec._id.toString()){
+								temp.push(loc)
+								// console.log(222)
+							}
+						})
+					})
+					
+					sys.location = temp
+				})
+			}
+			// console.log(allSystem)
+				res.send({
 				status: 1,
 				data: {data:allSystem}
 			})
