@@ -10,6 +10,7 @@ router.post('/system/add',System.addSystem); //已测
 router.post('/system/update', System.updateSystem); //已测
 router.get('/system/delete/:_id', System.deleteSystem)  //已测
 router.get('/system/all', System.getAllSystem); //已测
+router.get('/system/allByRole', System.getAllSystemByRole); //已测
 
 router.post('/location/add',System.addLocation); //已测
 router.post('/location/update',System.updateLocation); //已测
