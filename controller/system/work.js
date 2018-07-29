@@ -63,13 +63,11 @@ class Work extends BaseComponent{
                     return 
                 }
                 result =  await SignModel.find({'user':user._id,'create_time':{$gte : dtime(fromDate).format('YYYY-MM-DD HH:mm:ss'), $lte : dtime(toDate).format('YYYY-MM-DD HH:mm:ss')}}).skip(Number(pageSize*(pageNum-1))).limit(Number(pageSize)).populate('user')
-                await SignModel.find({'user':user._id,'create_time':{$gte : dtime(fromDate).format('YYYY-MM-DD HH:mm:ss'), $lte : dtime(toDate).format('YYYY-MM-DD HH:mm:ss')}},function(err, user){
-                    totalPage = parseInt((user.length-1)/pageSize+1)
-                })
+                const datacount = await SignModel.count({'user':user._id,'create_time':{$gte : dtime(fromDate).format('YYYY-MM-DD HH:mm:ss'), $lte : dtime(toDate).format('YYYY-MM-DD HH:mm:ss')}})
+                totalPage =  parseInt((datacount-1)/pageSize+1)
             }else {
-                await SignModel.find({'create_time':{$gte : dtime(fromDate).format('YYYY-MM-DD HH:mm:ss')}},function(err, user){
-                    totalPage = parseInt((user.length-1)/pageSize+1)
-                })
+                const datacount = await SignModel.count({'create_time':{$gte : dtime(fromDate).format('YYYY-MM-DD HH:mm:ss')}})
+                totalPage = parseInt((datacount-1)/pageSize+1)
                 result = await SignModel.find({'create_time':{$gte : dtime(fromDate).format('YYYY-MM-DD HH:mm:ss'), $lte : dtime(toDate).format('YYYY-MM-DD HH:mm:ss')}}).skip(Number(pageSize*(pageNum-1))).limit(Number(pageSize)).populate('user')
             }
             res.send({

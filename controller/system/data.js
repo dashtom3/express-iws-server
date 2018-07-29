@@ -24,7 +24,7 @@ class Data extends BaseComponent{
 
     async getHistoryData(req, res, next){
         const _id = req.params._id    //sensor id
-        const {pageSize	= 30, pageNum = 1,fromDate=new Date().getTime()-1000*60*60*24,toDate=new Date().getTime()} = req.query;
+        const {pageSize	= 30, pageNum = 1,toDate=new Date().getTime()} = req.query;
         if (!_id) {
                 console.log('参数错误');
                 res.send({
@@ -70,17 +70,30 @@ class Data extends BaseComponent{
             //         data: {data:{point:sensorPoint.point},page:{pageNum:parseInt(pageNum),pageSize:parseInt(pageSize),totalPage:0}}
             //     })
             // }
-            var sensor = await DataModel.find({'sensor':_id,create_time:{ $gte : dtime(fromDate).format('YYYY-MM-DD HH:mm:ss'), $lte : dtime(toDate).format('YYYY-MM-DD HH:mm:ss') }}).skip(Number(pageSize*(pageNum-1))).limit(Number(pageSize)).populate({path:'sensor',select:'-data -oldData -alarmData -oldAlarmData',populate:{path:"point"}})
-            const result = this.analyseData(sensor,sensor.transfer_type,sensor.point)
-            var totalPage;
-			await DataModel.find({'sensor':_id,create_time:{ $gte : dtime(fromDate).format('YYYY-MM-DD HH:mm:ss'), $lte : dtime(toDate).format('YYYY-MM-DD HH:mm:ss') }},function(err, user){
-				totalPage = parseInt((user.length-1)/pageSize+1)
-            })
-            console.log(result)
-            res.send({
-                status: 1,
-                data: {data:{point:sensor.point,data:result},page:{pageNum:parseInt(pageNum),pageSize:parseInt(pageSize),totalPage:parseInt((total[0].totalNum-1)/pageSize+1)}}
-            })
+            const fromDate = parseInt(dtime(toDate).format('x')-1000*60*60*24)
+            var data = await DataModel.find({'sensor':_id,create_time:{ $gte : dtime(fromDate).format('YYYY-MM-DD HH:mm:ss'), $lte : dtime(toDate).format('YYYY-MM-DD HH:mm:ss') }}).skip(Number(pageSize*(pageNum-1))).limit(Number(pageSize)).populate({path:'sensor',select:'-data -oldData -alarmData -oldAlarmData',populate:{path:"point"}})
+            //console.log(fromDate,toDate)
+            //console.log( dtime(fromDate).format('YYYY-MM-DD HH:mm:ss'),dtime(toDate).format('YYYY-MM-DD HH:mm:ss'))
+            var result
+            if(data.length>0){
+               result = this.analyseData(data,data[0].sensor.transfer_type,data[0].sensor.point)
+               const datacount = await DataModel.count({'sensor':_id,create_time:{ $gte : dtime(fromDate).format('YYYY-MM-DD HH:mm:ss'), $lte : dtime(toDate).format('YYYY-MM-DD HH:mm:ss') }})
+                const totalPage = parseInt((datacount-1)/pageSize+1)
+                // console.log(result,totalPage)
+                res.send({
+                    status: 1,
+                    data: {data:{point:data[0].sensor.point,data:result},page:{pageNum:parseInt(pageNum),pageSize:parseInt(pageSize),totalPage:totalPage}}
+                })
+            }else {
+                const sensor = await SensorModel.find({'_id':_id},'-data -oldAlarmData -alarmData').populate('point')
+                console.log(sensor)
+                res.send({
+                    status: 1,
+                    data: {data:{point:sensor[0].point,data:[]},page:{pageNum:parseInt(pageNum),pageSize:parseInt(pageSize),totalPage:1}}
+                })
+            }
+            
+            
         }catch(err){
 			console.log('读取失败', err);
 			res.send({

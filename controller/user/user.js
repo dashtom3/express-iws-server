@@ -162,10 +162,8 @@ class User extends BaseComponent{
 		console.log('获取所有用户')
 		const {pageSize	= 10, pageNum = 1} = req.query;
 		try{
-			var totalPage;
-			await UserModel.find(function(err, user){
-				totalPage = parseInt((user.length-1)/pageSize+1)
-			})
+			const datacount = await UserModel.count()
+			const totalPage = parseInt((datacount-1)/pageSize+1)
 			const allUser = await UserModel.find({}, '-__v -password -video').skip(Number(pageSize*(pageNum-1))).limit(Number(pageSize))
 			res.send({
 				status: 1,

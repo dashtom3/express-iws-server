@@ -2,7 +2,13 @@
 
 import mongoose from 'mongoose'
 import roleData from '../../InitData/role'
+import userData from '../../InitData/user'
+import UserModel from './user'
 import dtime from 'time-formater'
+import crypto from 'crypto'
+
+
+
 
 const Schema = mongoose.Schema;
 
@@ -21,9 +27,27 @@ Role.findOne((err, data) => {
 	if (!data) {
 		roleData.forEach(item => {
       item.create_time = dtime().format('YYYY-MM-DD')
-			Role.create(item)
+			Role.create(item).then(res=>{
+				// console.log(res)
+				if(item.type == 1){
+					userData.forEach(item=>{
+						item.create_time = dtime().format('YYYY-MM-DD')
+						item.password = Md5(Md5("123456").substr(2, 7) + Md5("123456"));
+						item.token = TokenAdd(item.username,"123456")
+						item.role = res._id
+						UserModel.create(item)
+					})
+				}
+			})
 		})
 	}
 })
+function Md5(password){
+	const md5 = crypto.createHash('md5');
+	return md5.update(password).digest('hex');
+}
+function TokenAdd(username,password){
+	return Md5(username+password);
+}
 
 export default Role
