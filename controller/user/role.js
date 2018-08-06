@@ -43,7 +43,8 @@ class Role extends BaseComponent{
 		  create_time: dtime().format('YYYY-MM-DD'),
 		  isWrite:isWrite,
 		  type:type,
-          location:location_ids,
+		  location:location_ids,
+		  video:[],
         }
         await RoleModel.create(newRole)
 				res.send({
