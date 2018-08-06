@@ -291,6 +291,33 @@ class User extends BaseComponent{
 			})
 		}
 	}
+	async getUserInfo(req, res, next){
+		const {token} = req.query;
+		if (!token) {
+			res.send({
+				status: 0,
+				type: 'ERROR_PARAMS',
+				message: '参数错误',
+			})
+			return
+		}
+		try{
+			const user = await UserModel.findOne({'token':token})
+			res.send({
+				status: 1,
+				data: user,
+			})
+			return
+		}catch(err){
+			console.log('失败', err);
+			res.send({
+				status: 0,
+				type: 'ERROR',
+				message: '失败'
+			})
+			return
+		}
+	}
 	async update(req, res, next){
 		const _id = req.params._id;
 		if (!_id) {
