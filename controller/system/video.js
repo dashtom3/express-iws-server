@@ -8,6 +8,8 @@ import formidable from 'formidable'
 import request from 'request'
 import BaseComponent from '../../prototype/baseComponent'
 import UserModel from '../../models/user/user'
+import RoleModel from '../../models/user/role'
+
 
 class Video extends BaseComponent{
 	constructor(){
@@ -45,6 +47,61 @@ class Video extends BaseComponent{
 				message: '获取失败'
 			})
 		}
+    }
+    async updateVideoRole(){
+        const {_id} = req.query; // role id
+        if (!_id) {
+            console.log('参数错误');
+            res.send({
+                status: 0,
+                type: 'ERROR_PARAMS',
+                message: '参数错误', 
+            })
+            return
+        }
+        const form = new formidable.IncomingForm();
+        form.parse(req, async (err, fields, files) => {
+            if (err) {
+                res.send({
+                    status: 0,
+                    type: 'FORM_DATA_ERROR',
+                    message: '表单信息错误'
+                })
+                return
+            }
+            
+            const {video} = fields;
+            try{
+                if (video == null) {
+                    throw new Error('字段不能为空')
+                }
+                const role = await RoleModel.findOne({_id:_id})
+                if(!role){
+                    res.send({
+                        status: 0,
+                        type: 'ERROR_GET_LIST',
+                        message: '角色不存在'
+                    })
+                }
+                // user.video = []
+                // user.video = video
+                
+                await RoleModel.findOneAndUpdate({'_id':_id},{$set:{video:video}})
+                res.send({
+                    status: 1,
+                    type: 'SUCCESS',
+                    message: '更新成功'
+                })
+            }catch(err){
+                console.log(err)
+                res.send({
+                    status: 0,
+                    type: 'ERROR_GET_LIST',
+                    message: '更新失败'
+                })
+            }
+        })
+
     }
     async getMyVideoList(req, res, next){
         const {token} = req.query;

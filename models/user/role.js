@@ -12,12 +12,18 @@ import crypto from 'crypto'
 
 const Schema = mongoose.Schema;
 
+const videoSchema = new Schema({
+	cameraUuid: String,
+	cameraName: String,
+})
+
 const roleSchema = new Schema({
 	create_time: String,
   type: {type:Number,default: 0,isRequired: true},      // 0 普通  1 管理员
 	name: String,
 	isWrite:Number, // 0 读 1 写
-  location: [{ type: Schema.Types.ObjectId, ref: 'Location' }]
+	location: [{ type: Schema.Types.ObjectId, ref: 'Location' }],
+	video:[videoSchema]
   // TODO: 所有地点的id
 })
 
