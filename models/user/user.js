@@ -16,6 +16,7 @@ const userSchema = new Schema({
 	role: { type: Schema.Types.ObjectId, ref: 'Role' },  //1:普通管理、 2:超级管理员
 	address: String,
 	token: String,
+	isDelete:Number,
 	video:[videoSchema]
 })
 
