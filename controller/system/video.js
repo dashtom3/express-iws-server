@@ -48,17 +48,17 @@ class Video extends BaseComponent{
 			})
 		}
     }
-    async updateVideoRole(){
-        const {_id} = req.query; // role id
-        if (!_id) {
-            console.log('参数错误');
-            res.send({
-                status: 0,
-                type: 'ERROR_PARAMS',
-                message: '参数错误', 
-            })
-            return
-        }
+    async updateVideoRole(req, res, next){
+        // const {_id} = req.params; // role id
+        // if (!_id) {
+        //     console.log('参数错误');
+        //     res.send({
+        //         status: 0,
+        //         type: 'ERROR_PARAMS',
+        //         message: '参数错误', 
+        //     })
+        //     return
+        // }
         const form = new formidable.IncomingForm();
         form.parse(req, async (err, fields, files) => {
             if (err) {
@@ -70,9 +70,9 @@ class Video extends BaseComponent{
                 return
             }
             
-            const {video} = fields;
+            const {_id,video} = fields;
             try{
-                if (video == null) {
+                if (video == null || !_id) {
                     throw new Error('字段不能为空')
                 }
                 const role = await RoleModel.findOne({_id:_id})
@@ -82,7 +82,7 @@ class Video extends BaseComponent{
                         type: 'ERROR_GET_LIST',
                         message: '角色不存在'
                     })
-                }
+                } 
                 // user.video = []
                 // user.video = video
                 

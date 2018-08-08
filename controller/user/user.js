@@ -160,11 +160,17 @@ class User extends BaseComponent{
 	}
 	async getAllUser(req, res, next){
 		console.log('获取所有用户')
-		const {pageSize	= 10, pageNum = 1} = req.query;
+		const {pageSize	= 10, pageNum = 1,hasRole = 0} = req.query;
 		try{
 			const datacount = await UserModel.count()
 			const totalPage = parseInt((datacount-1)/pageSize+1)
-			const allUser = await UserModel.find({}, '-__v -password -video').skip(Number(pageSize*(pageNum-1))).limit(Number(pageSize))
+			var allUser
+			if(hasRole == 1){
+				allUser = await UserModel.find({}, '-__v -password -video').skip(Number(pageSize*(pageNum-1))).limit(Number(pageSize)).populate('role')
+			} else {
+				allUser = await UserModel.find({}, '-__v -password -video').skip(Number(pageSize*(pageNum-1))).limit(Number(pageSize))
+			
+			}
 			res.send({
 				status: 1,
 				data: {data:allUser,page:{pageNum:pageNum,pageSize:pageSize,totalPage:totalPage}}
@@ -302,7 +308,7 @@ class User extends BaseComponent{
 			return
 		}
 		try{
-			const user = await UserModel.findOne({'token':token})
+			const user = await UserModel.findOne({'token':token}).populate('role')
 			res.send({
 				status: 1,
 				data: user,

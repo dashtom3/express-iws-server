@@ -9,5 +9,7 @@ const router = express.Router()
 router.get('/all', Video.getAllVideo);
 router.get('/my', Video.getMyVideoList);
 router.post('/update', Video.updateVideo);
+router.post('/updateByRole',Video.updateVideoRole)
 
 export default router
+ 

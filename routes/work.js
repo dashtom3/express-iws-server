@@ -9,5 +9,7 @@ const router = express.Router()
 router.get('/changeWorker/:_id', Work.changeWorker);
 router.post('/sign/add',Work.addSign);
 router.get('/sign/all',Work.allSign);
+router.get('/sign/export',Work.exportSign);
+router.get('/finishWork/:_id',Work.finishWork)
 
 export default router

@@ -188,6 +188,7 @@ class System extends BaseComponent{
 			}
 			// console.log(allSystem)
 			if(user.role.type != 1){
+				var temp2= []
 				allSystem.forEach(sys=>{
 					var temp = []
 					sys.location.forEach(loc=>{
@@ -201,7 +202,11 @@ class System extends BaseComponent{
 					})
 					
 					sys.location = temp
+					if(sys.location.length > 0){
+						temp2.push(sys)
+					}
 				})
+				allSystem = temp2
 			}
 			// console.log(allSystem)
 				res.send({
@@ -598,6 +603,7 @@ class System extends BaseComponent{
 						point:sensor[i].point,
 						ip:ip,
 						zhan:sensor[i].zhan,
+						isStart:false
 					}
 					var p ;
 					for(var j=0;j<sensor[i].alarm.alarmEnum.length;j++){

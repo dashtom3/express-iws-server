@@ -8,7 +8,7 @@ import role from './role'
 import data from './data'
 import work from './work'
 import video from './video'
-
+import file from './file'
 export default app => {
 	// app.get('/', (req, res, next) => {
 	// 	res.redirect('/');
@@ -19,5 +19,6 @@ export default app => {
 	app.use('/role', role);
 	app.use('/data', data);
 	app.use('/work', work);
-	app.use('/video',video)
+	app.use('/video',video);
+	app.use('/file',file)
 }
