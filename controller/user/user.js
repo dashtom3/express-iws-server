@@ -52,6 +52,12 @@ class User extends BaseComponent{
 						type: 'ERROR_PASSWORD',
 						message: '账号或密码错误',
 					})
+				}else if(user.isDelete == 1){
+					res.send({
+						status: 0,
+						type: 'ERROR_PASSWORD',
+						message: '用户已失效',
+					})
 				}else if(newpassword.toString() != user.password.toString()){
 					console.log('管理员登录密码错误');
 					res.send({
@@ -127,7 +133,8 @@ class User extends BaseComponent{
 						address: address,
 						phone: phone,
 						video:[],
-						token:this.TokenAdd(username,password)
+						token:this.TokenAdd(username,password),
+						isDelete:0
 					}
 					await UserModel.create(newUser)
 					//TODO 普通角色获取
@@ -160,16 +167,17 @@ class User extends BaseComponent{
 	}
 	async getAllUser(req, res, next){
 		console.log('获取所有用户')
-		const {pageSize	= 10, pageNum = 1,hasRole = 0} = req.query;
+		const {pageSize	= 10, pageNum = 1,hasRole = 0,isDelete = 0} = req.query;
 		try{
-			const datacount = await UserModel.count()
+			var tempParam = isDelete == 0? {isDelete:isDelete} :{}
+			const datacount = await UserModel.count(tempParam)
 			const totalPage = parseInt((datacount-1)/pageSize+1)
 			var allUser
-			if(hasRole == 1){
-				allUser = await UserModel.find({}, '-__v -password -video').skip(Number(pageSize*(pageNum-1))).limit(Number(pageSize)).populate('role')
-			} else {
-				allUser = await UserModel.find({}, '-__v -password -video').skip(Number(pageSize*(pageNum-1))).limit(Number(pageSize))
 			
+			if(hasRole == 1){
+				allUser = await UserModel.find(tempParam, '-__v -password -video').skip(Number(pageSize*(pageNum-1))).limit(Number(pageSize)).populate('role')
+			} else {
+				allUser = await UserModel.find(tempParam, '-__v -password -video').skip(Number(pageSize*(pageNum-1))).limit(Number(pageSize))
 			}
 			res.send({
 				status: 1,
@@ -256,7 +264,7 @@ class User extends BaseComponent{
 				return
 			}
 		try {
-		  await UserModel.findOneAndRemove({'_id':_id})
+		  await UserModel.findOneAndUpdate({'_id':_id},{$set:{isDelete:1}})
 		  res.send({
 					status: 1,
 					message: '删除成功'

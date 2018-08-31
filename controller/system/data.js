@@ -8,6 +8,7 @@ import DeviceModel from '../../models/system/device'
 import SystemModel from '../../models/system/system'
 import RoomModel from '../../models/system/room'
 import BaseComponent from '../../prototype/baseComponent'
+import formidable from 'formidable'
 import config from 'config-lite'
 import axios from 'axios'
 import dtime from 'time-formater'
@@ -28,7 +29,7 @@ class Data extends BaseComponent{
 
     async getHistoryData(req, res, next){
         const _id = req.params._id    //sensor id
-        const {pageSize	= 30, pageNum = 1,interval=1, fromDate = new Date().getTime()-1000*60*60*24,toDate=new Date().getTime()} = req.query;
+        const {pageSize	= 30, pageNum = 1,interval=60000, fromDate = new Date().getTime()-1000*60*60*24,toDate=new Date().getTime()} = req.query;
         if (!_id) {
                 console.log('参数错误');
                 res.send({
@@ -39,83 +40,51 @@ class Data extends BaseComponent{
                 return
             }
         try {
-            // SensorModel.findOne({'_id':_id},'-oldAlarmData -data -alarmData').sort({'_id':-1}).skip(Number(pageSize*(pageNum-1))).limit(Number(pageSize))
-            // console.log(new Date(fromDate))
-            // const sensor = await SensorModel.aggregate(
-            //     {$match:{'_id':mongoose.Types.ObjectId(_id)}},
-            //     {$unwind:'$oldData'},
-            //     {$match:{'oldData.create_time': { $gte : dtime(fromDate).format('YYYY-MM-DD HH:mm:ss'), $lte : dtime(toDate).format('YYYY-MM-DD HH:mm:ss') } }},
-            //     {$sort:{'oldData.create_time':-1}},
-            //     {$skip:Number(pageSize*(pageNum-1))},
-            //     {$limit:Number(pageSize)},
-            //     {$group:{_id:"$_id",oldData:{$push:"$oldData"}}})
-            // const sensorPoint = await SensorModel.findOne({'_id':_id},'-oldAlarmData -data -alarmData -oldData').populate('point')
-            // // console.log(sensor[0].oldData)
-            // // console.log(sensorPoint)
-            // if(sensor.length > 0){
-            //     const total = await SensorModel.aggregate(
-            //         {$match:{_id:mongoose.Types.ObjectId(_id)}},
-            //         {$unwind:'$oldData'},
-            //         {$match:{'oldData.create_time': { $gte : dtime(fromDate).format('YYYY-MM-DD HH:mm:ss'), $lte : dtime(toDate).format('YYYY-MM-DD HH:mm:ss') } }},
-            //         {$group:{_id:"$_id",totalNum:{$sum:1}}})
-            //     // const sensor = await SensorModel.aggregate({$match:{_id:mongoose.Types.ObjectId(_id)}}).unwind('oldData').sort({'oldData.create_time':-1}).skip(Number(pageSize*(pageNum-1))).limit(Number(pageSize)).group({_id:"$_id",oldData:{$push:"$oldData"}})
-            //     // console.log(sensor)
-            //     sensor[0].point = sensorPoint.point
-            //     const result = this.analyseData(sensor[0].oldData,sensorPoint.transfer_type,sensorPoint.point)
-            //     // console.log(result)
-            //     res.send({
-            //         status: 1,
-            //         data: {data:{point:sensorPoint.point,data:result},page:{pageNum:parseInt(pageNum),pageSize:parseInt(pageSize),totalPage:parseInt((total[0].totalNum-1)/pageSize+1)}}
-            //     })
-            // }else {
-            //     // console.log(sensor)
-            //     res.send({
-            //         status: 1,
-            //         data: {data:{point:sensorPoint.point},page:{pageNum:parseInt(pageNum),pageSize:parseInt(pageSize),totalPage:0}}
-            //     })
-            // }
-            console.log(dtime(fromDate).format('YYYY-MM-DD HH:mm:ss'))
-            const total = await DataModel.aggregate(
-                {$match:{sensor:mongoose.Types.ObjectId(_id)}},
-                {$match:{'create_time': { $gte : dtime(fromDate).format('YYYY-MM-DD HH:mm:ss'), $lte : dtime(toDate).format('YYYY-MM-DD HH:mm:ss') } }},
-                {$group:{_id:"$sensor",totalNum:{$sum:1}}}
-            )
-            // console.log(total)
-            //interval 1 1min; 2 5min; 3 10min; 4 1hour;5 12hour;6 24hour 
-            var tempint = [12,60,120,720,8640,17280]
+
+            var tempBoundary = []
+            for(var i=0;i<=(dtime(toDate).format('x')-dtime(fromDate).format('x'))/interval;i++){
+                var tempB = parseInt(dtime(fromDate).format('x'))+interval*i
+                
+                tempBoundary.push(dtime(tempB).format('YYYY-MM-DD HH:mm:ss'))
+            }
+            // console.log(tempBoundary)
             const data = await DataModel.aggregate(
                     {$match:{'sensor':mongoose.Types.ObjectId(_id)}},
+                    {$sort:{'create_time':1}},
                     {$match:{'create_time': { $gte : dtime(fromDate).format('YYYY-MM-DD HH:mm:ss'), $lte : dtime(toDate).format('YYYY-MM-DD HH:mm:ss') } }},
-                    {$sort:{'create_time':-1}},
-                    {$bucketAuto:
+                    {$bucket:
                         {groupBy:'$create_time'
-                        ,buckets: parseInt((toDate-fromDate)/60000)
-                        ,output:{time:{$first:'$create_time'}}}
-                        
-                    }
-                    // {$skip:Number(pageSize*(pageNum-1))},
-                    // {$limit:Number(pageSize)}, 
-                    // {$range:[0,total,tempint[interval-1]]}
-
-                     )
-            console.log(data)
-            // const fromDate = parseInt(dtime(toDate).format('x')-1000*60*60*24)
-            // var data = await DataModel.find({'sensor':_id,create_time:{ $gte : dtime(fromDate).format('YYYY-MM-DD HH:mm:ss'), $lte : dtime(toDate).format('YYYY-MM-DD HH:mm:ss') }}).skip(Number(pageSize*(pageNum-1))).limit(Number(pageSize)).populate({path:'sensor',select:'-data -oldData -alarmData -oldAlarmData',populate:{path:"point"}})
-            //console.log(fromDate,toDate)
-            //console.log( dtime(fromDate).format('YYYY-MM-DD HH:mm:ss'),dtime(toDate).format('YYYY-MM-DD HH:mm:ss'))
+                        ,boundaries: tempBoundary
+                        ,output:{create_time:{$first:'$create_time'},data:{$first:"$data"}}}
+                         
+                    },
+                    {$skip:Number(pageSize*(pageNum-1))},
+                    {$limit:Number(pageSize)} 
+            )
+            // console.log(data)
+            const sensor = await SensorModel.find({_id:_id},'-data -alarmData -oldAlarmData').populate('point')
+            // console.log(sensor)
             var result
             if(data.length>0){
-               result = this.analyseData(data,data[0].sensor.transfer_type,data[0].sensor.point)
-               const datacount = await DataModel.count({'sensor':_id,create_time:{ $gte : dtime(fromDate).format('YYYY-MM-DD HH:mm:ss'), $lte : dtime(toDate).format('YYYY-MM-DD HH:mm:ss') }}) 
-                const totalPage = parseInt((datacount-1)/pageSize+1)
+               result = this.analyseData(data,sensor[0].transfer_type,sensor[0].point)
+               const datacount = await DataModel.aggregate(
+                    {$match:{'sensor':mongoose.Types.ObjectId(_id)}},
+                    {$sort:{'create_time':1}},
+                    {$match:{'create_time': { $gte : dtime(fromDate).format('YYYY-MM-DD HH:mm:ss'), $lte : dtime(toDate).format('YYYY-MM-DD HH:mm:ss') } }},
+                    {$bucket:
+                        {groupBy:'$create_time'
+                        ,boundaries: tempBoundary
+                        ,output:{create_time:{$first:'$create_time'},data:{$first:"$data"}}}
+                        
+                    }
+                )
+               const totalPage = parseInt((datacount.length-1)/pageSize+1)
                 // console.log(result,totalPage)
                 res.send({
                     status: 1,
-                    data: {data:{point:data[0].sensor.point,data:result},page:{pageNum:parseInt(pageNum),pageSize:parseInt(pageSize),totalPage:totalPage}}
-                })
+                    data: {data:{point:sensor[0].point,data:result},page:{pageNum:parseInt(pageNum),pageSize:parseInt(pageSize),totalPage:totalPage}}
+                })                          
             }else {
-                const sensor = await SensorModel.find({'_id':_id},'-data -oldAlarmData -alarmData').populate('point')
-                console.log(sensor)
                 res.send({
                     status: 1,
                     data: {data:{point:sensor[0].point,data:[]},page:{pageNum:parseInt(pageNum),pageSize:parseInt(pageSize),totalPage:1}}
@@ -134,7 +103,7 @@ class Data extends BaseComponent{
     }
     async exportHistoryData(req, res, next){
         const _id = req.params._id    //sensor id
-        const {toDate=new Date().getTime()} = req.query;
+        const {interval=60000, fromDate = new Date().getTime()-1000*60*60*24,toDate=new Date().getTime(),token} = req.query;
         if (!_id) {
                 console.log('参数错误');
                 res.send({
@@ -145,34 +114,59 @@ class Data extends BaseComponent{
                 return
             }
         try {
-            const fromDate = parseInt(dtime(toDate).format('x')-1000*60*60*24)
-            var data = await DataModel.find({'sensor':_id,create_time:{ $gte : dtime(fromDate).format('YYYY-MM-DD HH:mm:ss'), $lte : dtime(toDate).format('YYYY-MM-DD HH:mm:ss') }}).populate({path:'sensor',select:'-data -oldData -alarmData -oldAlarmData',populate:{path:"point"}})
-            var result
-            if(data.length>0){
-               result = this.analyseData(data,data[0].sensor.transfer_type,data[0].sensor.point)
-               console.log(result[0])
-               var temp = ["时间"]
-               data[0].sensor.point.pointEnum.forEach(item=>{
-                   temp.push(item.name)
-               })
-               var temp2 = [temp]
-               result.forEach(item=>{
-                    var temp3 = [item.create_time].concat(item.data)
-                    temp2.push(temp3)
-               })
-               console.log(temp2[0],temp2[1])
-               var buffer = xlsx.build([{name: "mySheetName", data: result}]);
-               console.log(buffer)
+
+            var tempBoundary = []
+            for(var i=0;i<=(dtime(toDate).format('x')-dtime(fromDate).format('x'))/interval;i++){
+                var tempB = parseInt(dtime(fromDate).format('x'))+interval*i
+                
+                tempBoundary.push(dtime(tempB).format('YYYY-MM-DD HH:mm:ss'))
             }
-            //    console.log(result)
-                // res.send({
-                //     status: 1,
-                //     data: {data:{point:data[0].sensor.point,data:result},page:{pageNum:parseInt(pageNum),pageSize:parseInt(pageSize),totalPage:totalPage}}
-                // })
+            // console.log(tempBoundary)
+            const data = await DataModel.aggregate(
+                    {$match:{'sensor':mongoose.Types.ObjectId(_id)}},
+                    {$sort:{'create_time':1}},
+                    {$match:{'create_time': { $gte : dtime(fromDate).format('YYYY-MM-DD HH:mm:ss'), $lte : dtime(toDate).format('YYYY-MM-DD HH:mm:ss') } }},
+                    {$bucket:
+                        {groupBy:'$create_time'
+                        ,boundaries: tempBoundary
+                        ,output:{create_time:{$first:'$create_time'},data:{$first:"$data"}}}
+                         
+                    }
+            )
+            // console.log(data)
+            const sensor = await SensorModel.find({_id:_id},'-data -alarmData -oldAlarmData').populate('point')
+            // console.log(sensor)
+            var result
+            
+            result = this.analyseData(data,sensor[0].transfer_type,sensor[0].point)
+            
+            var tempData = []
+            var tempData2 = ["时间"]
+            sensor[0].point.pointEnum.forEach(poi=>{
+                tempData2.push(poi.name)
+            })
+            tempData.push(tempData2)
+            result.forEach(res=>{
+                tempData2 = []
+                tempData2.push(res.create_time)
+                res.data.forEach(resdata=>{
+                    tempData2.push(resdata)
+                })
+                tempData.push(tempData2)
+            })
+
+            var buffer = xlsx.build([{name:'mySheetname',data:tempData}])
+            const fileName  = 'data'+(new Date().getTime())+token+'.xlsx'
+            fs.writeFile('./fileExcel/'+fileName,buffer,(data)=>{
+                console.log(data)
+                res.send({
+                    status: 1,
+                    message:'导出成功',
+                    src:fileName,
+                })
+            })                       
             
             
-            
-        
         }catch(err){
 			console.log('读取失败', err);
 			res.send({
@@ -203,20 +197,27 @@ class Data extends BaseComponent{
                 })
                 return 
             }
-            console.log(room)
+            // console.log(room)
             var result = {};
             room.device.forEach(dev=>{
-                result[dev.name] = {}
+                result[dev.name] = [{},[]]
                 dev.sensor.forEach(sen=>{
-                    var temp = this.analyseData([sen.data],sen.transfer_type,sen.point)
-                    // console.log(temp[0].data)
-                    temp[0].data.forEach((tempData,index)=>{
-                        // console.log(tempData,index)
-                        result[dev.name][sen.point.pointEnum[index].name] = tempData
-                    })
+                    if(sen.data  != null){
+                        var temp = this.analyseData([sen.data],sen.transfer_type,sen.point)
+                        // console.log(temp[0].data)
+                        temp[0].data.forEach((tempData,index)=>{
+                            // console.log(tempData,index)
+                            result[dev.name][0][sen.point.pointEnum[index].name] = tempData
+                        })
+                        result[dev.name][1].push(sen)
+                    }
+                    
                 })
             })
-            console.log(result)
+            // console.log(result) 
+            if(result['设备一']){
+                console.log(result['设备一'])
+            }  
             // console.log(sensor)
             res.send({
                 status: 1,
@@ -307,17 +308,17 @@ class Data extends BaseComponent{
             // SensorModel.findOne({'_id':_id},'-oldAlarmData -data -alarmData').sort({'_id':-1}).skip(Number(pageSize*(pageNum-1))).limit(Number(pageSize))
             // console.log(new Date(fromDate))
             var sensor;
-            var user;
+            const user = await UserModel.findOne({'token':token}).populate({path:'role',populate:{path:'location',populate:{path:"room",populate:{path:"device",populate:{path:"sensor"}}}}})
+            if(!user){
+                res.send({
+                    status: 0,
+                    type: 'ERROR_PARAMS',
+                    message: '用户不存在', 
+                })
+                return 
+            }
             if(isMe == 1){
-                user = await UserModel.findOne({'token':token})
-                if(!user){
-                    res.send({
-                        status: 0,
-                        type: 'ERROR_PARAMS',
-                        message: '用户不存在', 
-                    })
-                    return 
-                }
+                
                 sensor = await SensorModel.aggregate(
                     // {$match:{},
                     {$unwind:'$oldAlarmData'},
@@ -334,6 +335,19 @@ class Data extends BaseComponent{
                 var tempParam = {'oldAlarmData.create_time': { $gte : dtime(fromDate).format('YYYY-MM-DD HH:mm:ss'), $lte : dtime(toDate).format('YYYY-MM-DD HH:mm:ss') } }
                 if(_id != null && _id != ''){
                     tempParam['oldAlarmData.worker'] = mongoose.Types.ObjectId(_id)
+                }
+                if(user.role.type == 0){
+                    var temp = []
+                    user.role.location.forEach(loc=>{
+                        loc.room.forEach(room=>{
+                            room.device.forEach(dev=>{
+                                dev.sensor.forEach(sensor=>{
+                                    temp.push(sensor._id)
+                                })
+                            })
+                        })
+                    })
+                    tempParam['_id'] = {$in:temp}
                 }
                 sensor = await SensorModel.aggregate(
                     // {$match:{'_id':mongoose.Types.ObjectId(_id)}},
@@ -358,6 +372,19 @@ class Data extends BaseComponent{
                     var tempParam = {'oldAlarmData.create_time': { $gte : dtime(fromDate).format('YYYY-MM-DD HH:mm:ss'), $lte : dtime(toDate).format('YYYY-MM-DD HH:mm:ss') } }
                     if(_id != null && _id != ''){
                         tempParam['oldAlarmData.worker'] = mongoose.Types.ObjectId(_id)
+                    }
+                    if(user.role.type == 0){
+                        var temp = []
+                        user.role.location.forEach(loc=>{
+                            loc.room.forEach(room=>{
+                                room.device.forEach(dev=>{
+                                    dev.sensor.forEach(sensor=>{
+                                        temp.push(sensor._id)
+                                    })
+                                })
+                            })
+                        })
+                        tempParam['_id'] = {$in:temp}
                     }
                     total = await SensorModel.aggregate(
                         {$unwind:'$oldAlarmData'},
@@ -467,7 +494,7 @@ class Data extends BaseComponent{
             var buffer = xlsx.build([{name:'mySheetname',data:tempData}])
             const fileName  = 'alarm'+(new Date().getTime())+token+'.xlsx'
             fs.writeFile('./fileExcel/'+fileName,buffer,(data)=>{
-                console.log(data)
+                // console.log(data)
                 res.send({
                     status: 1,
                     message:'导出成功',
@@ -530,14 +557,65 @@ class Data extends BaseComponent{
                 }
             }
         }catch(err){
-			console.log('删除失败', err);
+			console.log('开启失败', err);
 			res.send({
 				status: 0,
 				type: 'ERROR_GET_LIST',
-				message: '删除失败'
+				message: '开启失败'
 			})
 		}
     }
+    async control(req, res, next){
+        const {token} = req.query
+        const form = new formidable.IncomingForm();
+		form.parse(req, async (err, fields, files) => {
+			if (err) {
+				res.send({
+					status: 0,
+					type: 'FORM_DATA_ERROR',
+					message: '表单信息错误'
+				})
+				return
+			}
+			const {transfer_type,ip,zhan,startAddress,datalength,bitnum,buffer} = fields;   //sensor id
+            console.log(fields)
+            try{
+				if (transfer_type == null ||!ip || !zhan || bitnum == null || startAddress==null || datalength == null || buffer == null) {
+					throw new Error('字段不能为空')
+				}
+			}catch(err){
+				console.log(err.message, err);
+				res.send({
+					status: 0,
+					type: 'GET_ERROR_PARAM',
+					message: err.message,
+				})
+				return
+			}
+			try{
+                let user = await UserModel.findOne({token:token}).populate('role')
+                console.log(user) 
+                if(user.role.type == 0 && user.role.isWrite == 0){
+                    res.send({
+                        status: 0,
+                        type: 'role_error',
+                        message: '权限不足',
+                    })
+                    return 
+                }
+                var result = await axios.post(config.data_ip+config.api.control,{bitnum:bitnum,transfer_type:transfer_type,ip:ip,zhan:zhan,startAddress:startAddress,datalength:datalength,buffer:buffer})
+                console.log(result)
+                res.send(result.data)
+			}catch(err){
+				console.log('控制失败', err);
+				res.send({
+					status: 0,
+					type: 'INTERFACE_FAILED',
+					message: '控制失败',
+				})
+			}
+		})
+	}
     
 }
 

@@ -16,7 +16,75 @@ export default class BaseComponent {
 		this.imgTypeList = ['shop', 'food', 'avatar','default'];
 		this.uploadImg = this.uploadImg.bind(this)
 		this.qiniu = this.qiniu.bind(this)
+		this.analyseData = this.analyseData.bind(this)
+		this.HexToSingle = this.HexToSingle.bind(this)
+		this.InsertString = this.InsertString.bind(this)
+		this.FillString = this.FillString.bind(this)
 	}
+	 InsertString(t, c, n) {
+    var r = new Array();
+    for (var i = 0; i * 2 < t.length; i++) {
+        r.push(t.substr(i * 2, n));
+    }
+    return r.join(c);
+	}
+ FillString(t, c, n, b) {
+    if ((t == "") || (c.length != 1) || (n <= t.length)) {
+        return t;
+    }
+    var l = t.length;
+    for (var i = 0; i < n - l; i++) {
+        if (b == true) {
+            t = c + t;
+        }
+         else {
+            t += c;
+        }
+    }
+    return t;
+}
+ HexToSingle(t) {
+    // t = t.replace(/\s+/g, "");
+    // if (t == "") {
+    //     return "";
+    // }
+    // if (t == "00000000") {
+    //     return "0";
+    // }
+    // if ((t.length > 8) || (isNaN(parseInt(t, 16)))) {
+    //     return "Error";
+    // }
+    // if (t.length < 8) {
+    //     t = FillString(t, "0", 8, true);
+    // }
+    // t = parseInt(t, 16).toString(2);
+    // t = FillString(t, "0", 32, true);
+    var s = t.substring(0, 1);
+    var e = t.substring(1, 9);
+    var m = t.substring(9);
+    e = parseInt(e, 2) - 127;
+    m = "1" + m;
+    if (e >= 0) {
+        m = m.substr(0, e + 1) + "." + m.substring(e + 1)
+    }
+     else {
+        m = "0." + this.FillString(m, "0", m.length - e - 1, true)
+    }
+    if (m.indexOf(".") == -1) {
+        m = m + ".0";
+    }
+    var a = m.split(".");
+    var mi = parseInt(a[0], 2);
+    var mf = 0;
+    for (var i = 0; i < a[1].length; i++) {
+        mf += parseFloat(a[1].charAt(i)) * Math.pow(2, -(i + 1));
+    }
+    m = parseInt(mi) + parseFloat(mf);
+    if (s == 1) {
+        m = 0 - m;
+    }
+    return m;
+}
 	analyseData(data,transfer_type,point){
 		var returnData = []
 		// console.log(data)
@@ -37,8 +105,24 @@ export default class BaseComponent {
 							}
 							//console.log(point.pointEnum[index].name,allData[num-1],allData[num])
 							var datatemp = parseInt(temp,2)/point.pointEnum[index].times
+							if(point.pointEnum[index].floatNum != 0){
+								// console.log("小数位数",point.pointEnum[index].floatNum)
+								// console.log(temp)
+								// var data_E = parseInt(temp.slice(0,8),2)
+								// var data_M = temp.slice(8,64)
+								// var data_M_10 = 0.00
+								// for(var i=0;i<data_M.length;i++){
+								// 	data_M_10 = data_M_10+ data_M[i]*Math.pow(2,(-1)*(i+1))
+								// }
+								// var value = 2^(E-127)*(1.M)
+								// var data_float = Math.pow(2,data_E-127)*(1+data_M_10)
+								// console.log(temp,data_E)
+								datatemp = this.HexToSingle(temp).toFixed(point.pointEnum[index].floatNum)
+								// console.log(datatemp)
+							} 
+							
 							tempItem = [point.pointEnum[index].name,datatemp+point.pointEnum[index].unit]
-							break;
+							break; 
 						case 1: // 1 变频9 工频17 休息2 热继故障36 空开跳闸68 变频故障132
 							var datatemp = allData[num]
 							switch (parseInt(datatemp)) {
@@ -127,7 +211,7 @@ export default class BaseComponent {
 							break;
 						case 1:
 							var datatemp = allData[index]
-							console.log(datatemp)
+							// console.log(datatemp)
 							switch (parseInt(datatemp)) {
 								case 2:
 									tempItem = [point.pointEnum[index].name,"休息"]

@@ -8,6 +8,7 @@ module.exports = {
 	api:{
 		start:'data/start',
 		stop:'data/stop',
+		control:'data/write'
 	},
 	session: {
 		name: 'SID',
