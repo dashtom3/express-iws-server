@@ -209,8 +209,8 @@ pointEnum:
 },
 {
     number: 19,
-    name: "1#变频器频率",
-    place:0,
+    name: "2#变频器频率",
+    place:0, 
     placeLength:0,
     type: 0,
     times: 100,

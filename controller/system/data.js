@@ -79,7 +79,7 @@ class Data extends BaseComponent{
                     }
                 )
                const totalPage = parseInt((datacount.length-1)/pageSize+1)
-                // console.log(result,totalPage)
+                
                 res.send({
                     status: 1,
                     data: {data:{point:sensor[0].point,data:result},page:{pageNum:parseInt(pageNum),pageSize:parseInt(pageSize),totalPage:totalPage}}
@@ -214,10 +214,8 @@ class Data extends BaseComponent{
                     
                 })
             })
-            // console.log(result) 
-            if(result['设备一']){
-                console.log(result['设备一'])
-            }  
+            
+             
             // console.log(sensor)
             res.send({
                 status: 1,

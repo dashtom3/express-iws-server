@@ -223,7 +223,7 @@ export default class BaseComponent {
 									tempItem = [point.pointEnum[index].name,"工频"]
 									break;
 								case 36:
-									tempItem = [point.pointEnum[index].name,"热继故障"]
+									tempItem = [point.pointEnum[index].name,"热继故障"] 
 									break;
 								case 68:
 									tempItem = [point.pointEnum[index].name,"空开跳闸"]
